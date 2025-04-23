@@ -1,0 +1,1 @@
+wybieramy jeden plik bazując na swoim numerze np. jak mamy 4 numer to 1 plik itd. Można swój wgrać
