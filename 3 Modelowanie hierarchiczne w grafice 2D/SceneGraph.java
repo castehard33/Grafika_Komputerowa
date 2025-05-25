@@ -1,9 +1,8 @@
-package gk.lab3;
 
-
-import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.geom.*;
 import java.util.ArrayList;
 
@@ -42,129 +41,56 @@ public class SceneGraph extends JPanel {
 
 	private CompoundObject world; // SceneGraphNode representing the entire scene.
 
-	// Global variables for animated wheel objects
-	private TransformedObject wheel1_L, wheel1_R;
-	private TransformedObject wheel2_L, wheel2_R;
-	private TransformedObject wheel3_L, wheel3_R;
+	// TODO: Define global variables to represent animated objects in the scene.
+	private TransformedObject T1, T2, T3;
+	private TransformedObject L1, L2, L3;
+	private TransformedObject P1, P2, P3, P4, P5, P6;
 
 	/**
 	 *  Builds the data structure that represents the entire picture.
 	 */
 	private void createWorld() {
 
-		world = new CompoundObject();  // Root node for the scene graph.
+		world = new CompoundObject();
 
-		// Define parameters for each seesaw
-		// Seesaw 1 (Purple Fulcrum, Top-Left)
-		double s1_fulcrumX = -2.0, s1_fulcrumBaseY = 0.2;
-		double s1_fulcrumW = 0.5, s1_fulcrumH = 0.8; // Fulcrum tip at (s1_fulcrumX, s1_fulcrumBaseY + s1_fulcrumH)
-		double s1_beamL = 3.0, s1_beamW = 0.3;
-		double s1_wheelD = 1.0;
-		double s1_tilt = 15; // degrees
-		Color s1_fulcrumColor = new Color(128,0,128); // Purple
+		P1 = new TransformedObject(filledPolygon);
+		P2 = new TransformedObject(filledPolygon);
+		P3 = new TransformedObject(filledPolygon);
+		P4 = new TransformedObject(filledPolygon);
+		P5 = new TransformedObject(filledPolygon);
+		P6 = new TransformedObject(filledPolygon);
+		L1 = new TransformedObject(filledRect);
+		L2 = new TransformedObject(filledRect);
+		L3 = new TransformedObject(filledRect);
+		T1 = new TransformedObject(filledTriangle);
+		T2 = new TransformedObject(filledTriangle);
+		T3 = new TransformedObject(filledTriangle);
 
-		// Seesaw 2 (Green Fulcrum, Top-Right)
-		double s2_fulcrumX = 2.0, s2_fulcrumBaseY = 1.0;
-		double s2_fulcrumW = 0.4, s2_fulcrumH = 0.5; // Tip at (2.0, 1.5)
-		double s2_beamL = 2.0, s2_beamW = 0.25;
-		double s2_wheelD = 0.7;
-		double s2_tilt = 20; // degrees
-		Color s2_fulcrumColor = Color.GREEN;
+		P1.setScale(0.3, 0.3).setTranslation(-0.889, -0.42);
+		P2.setScale(0.3, 0.3).setTranslation(0.899, -1.189);
+		P3.setScale(0.25, 0.25).setTranslation(-3, 1.825);
+		P4.setScale(0.25, 0.25).setTranslation(-1.4, 1.18);
+		P5.setScale(0.2, 0.2).setTranslation(0.83, 2.07);
+		P6.setScale(0.2, 0.2).setTranslation(2.16, 1.52);
+		T1.setScale(0.5, 1.2).setTranslation(0, -2).setColor(Color.BLUE);
+		L1.setRotation(-22.5).setScale(2, 0.1).setTranslation(0, -0.8).setColor(Color.RED);
+		L2.setRotation(-22.5).setScale(1.79, 0.1).setTranslation(-2.2, 1.50).setColor(Color.RED);
+		L3.setRotation(-22.5).setScale(1.48, 0.08).setTranslation(1.5, 1.8).setColor(Color.RED);
+		T2.setScale(0.5, 1).setTranslation(-2.25, 0.5).setColor(new Color(200, 21, 132));
+		T3.setScale(0.5, 0.8).setTranslation(1.5, 1).setColor(new Color(0, 128, 0));
 
-		// Seesaw 3 (Blue Fulcrum, Bottom-Center)
-		double s3_fulcrumX = 0.0, s3_fulcrumBaseY = -2.0;
-		double s3_fulcrumW = 0.6, s3_fulcrumH = 0.5; // Tip at (0.0, -1.5)
-		double s3_beamL = 4.0, s3_beamW = 0.4;
-		double s3_wheelD = 1.2;
-		double s3_tilt = 10; // degrees
-		Color s3_fulcrumColor = Color.BLUE;
-
-
-		// Create Seesaw 1
-		TransformedObject fulcrum1 = new TransformedObject(filledTriangle)
-			.setColor(s1_fulcrumColor)
-			.setScale(s1_fulcrumW, s1_fulcrumH)
-			.setTranslation(s1_fulcrumX, s1_fulcrumBaseY);
-		world.add(fulcrum1);
-
-		CompoundObject beamAndWheels1 = new CompoundObject();
-		TransformedObject beam1 = new TransformedObject(filledRect)
-			.setColor(Color.RED)
-			.setScale(s1_beamL, s1_beamW);
-		beamAndWheels1.add(beam1);
-
-		wheel1_L = new TransformedObject(wheelNode) // wheelNode draws a diameter 1 wheel
-			.setScale(s1_wheelD, s1_wheelD)
-			.setTranslation(-s1_beamL / 2, 0);
-		beamAndWheels1.add(wheel1_L);
-
-		wheel1_R = new TransformedObject(wheelNode)
-			.setScale(s1_wheelD, s1_wheelD)
-			.setTranslation(s1_beamL / 2, 0);
-		beamAndWheels1.add(wheel1_R);
-
-		TransformedObject tiltedAssembly1 = new TransformedObject(beamAndWheels1)
-			.setTranslation(s1_fulcrumX, s1_fulcrumBaseY + s1_fulcrumH) // Pivot at fulcrum tip
-			.setRotation(s1_tilt);
-		world.add(tiltedAssembly1);
-
-
-		// Create Seesaw 2
-		TransformedObject fulcrum2 = new TransformedObject(filledTriangle)
-			.setColor(s2_fulcrumColor)
-			.setScale(s2_fulcrumW, s2_fulcrumH)
-			.setTranslation(s2_fulcrumX, s2_fulcrumBaseY);
-		world.add(fulcrum2);
-
-		CompoundObject beamAndWheels2 = new CompoundObject();
-		TransformedObject beam2 = new TransformedObject(filledRect)
-			.setColor(Color.RED)
-			.setScale(s2_beamL, s2_beamW);
-		beamAndWheels2.add(beam2);
-
-		wheel2_L = new TransformedObject(wheelNode)
-			.setScale(s2_wheelD, s2_wheelD)
-			.setTranslation(-s2_beamL / 2, 0);
-		beamAndWheels2.add(wheel2_L);
-
-		wheel2_R = new TransformedObject(wheelNode)
-			.setScale(s2_wheelD, s2_wheelD)
-			.setTranslation(s2_beamL / 2, 0);
-		beamAndWheels2.add(wheel2_R);
-
-		TransformedObject tiltedAssembly2 = new TransformedObject(beamAndWheels2)
-			.setTranslation(s2_fulcrumX, s2_fulcrumBaseY + s2_fulcrumH)
-			.setRotation(s2_tilt);
-		world.add(tiltedAssembly2);
-
-
-		// Create Seesaw 3
-		TransformedObject fulcrum3 = new TransformedObject(filledTriangle)
-			.setColor(s3_fulcrumColor)
-			.setScale(s3_fulcrumW, s3_fulcrumH)
-			.setTranslation(s3_fulcrumX, s3_fulcrumBaseY);
-		world.add(fulcrum3);
-
-		CompoundObject beamAndWheels3 = new CompoundObject();
-		TransformedObject beam3 = new TransformedObject(filledRect)
-			.setColor(Color.RED)
-			.setScale(s3_beamL, s3_beamW);
-		beamAndWheels3.add(beam3);
-
-		wheel3_L = new TransformedObject(wheelNode)
-			.setScale(s3_wheelD, s3_wheelD)
-			.setTranslation(-s3_beamL / 2, 0);
-		beamAndWheels3.add(wheel3_L);
-
-		wheel3_R = new TransformedObject(wheelNode)
-			.setScale(s3_wheelD, s3_wheelD)
-			.setTranslation(s3_beamL / 2, 0);
-		beamAndWheels3.add(wheel3_R);
-
-		TransformedObject tiltedAssembly3 = new TransformedObject(beamAndWheels3)
-			.setTranslation(s3_fulcrumX, s3_fulcrumBaseY + s3_fulcrumH)
-			.setRotation(s3_tilt);
-		world.add(tiltedAssembly3);
+		world.add(P1);
+		world.add(P2);
+		world.add(P3);
+		world.add(P4);
+		world.add(P5);
+		world.add(P6);
+		world.add(L1);
+		world.add(L2);
+		world.add(L3);
+		world.add(T1);
+		world.add(T2);
+		world.add(T3);
 
 	} // end createWorld()
 
@@ -175,15 +101,17 @@ public class SceneGraph extends JPanel {
 	 */
 	public void updateFrame() {
 		frameNumber++;
-		double rotationSpeed = 2.0; // degrees per frame
-		double currentRotation = frameNumber * rotationSpeed;
 
-		if (wheel1_L != null) wheel1_L.setRotation(currentRotation);
-		if (wheel1_R != null) wheel1_R.setRotation(currentRotation);
-		if (wheel2_L != null) wheel2_L.setRotation(currentRotation);
-		if (wheel2_R != null) wheel2_R.setRotation(currentRotation);
-		if (wheel3_L != null) wheel3_L.setRotation(currentRotation);
-		if (wheel3_R != null) wheel3_R.setRotation(currentRotation);
+		// TODO: Update state in preparation for drawing the next frame.
+		double rotate = -2 * frameNumber;
+
+		P1.setRotation(rotate);
+		P2.setRotation(rotate);
+		P3.setRotation(rotate);
+		P4.setRotation(rotate);
+		P5.setRotation(rotate);
+		P6.setRotation(rotate);
+
 	}
 
 
@@ -192,7 +120,7 @@ public class SceneGraph extends JPanel {
 
 	private static abstract class SceneGraphNode {
 		Color color;  // If not null, the default color for this node and its children.
-		              // If null, the default color is inherited.
+		// If null, the default color is inherited.
 		SceneGraphNode setColor(Color c) {
 			this.color = c;
 			return this;
@@ -274,7 +202,7 @@ public class SceneGraph extends JPanel {
 		}
 	}
 
-	       // Create some basic objects as custom SceneGraphNodes.
+	// Create some basic objects as custom SceneGraphNodes.
 
 	private static SceneGraphNode line = new SceneGraphNode() {
 		void doDraw(Graphics2D g) {  g.draw( new Line2D.Double( -0.5,0, 0.5,0) ); }
@@ -297,49 +225,43 @@ public class SceneGraph extends JPanel {
 	};
 
 	private static SceneGraphNode filledTriangle = new SceneGraphNode() {
-		void doDraw(Graphics2D g) {  // width = 1, height = 1, center of base is at (0,0), tip at (0,1)
+		void doDraw(Graphics2D g) {  // width = 1, height = 1, center of base is at (0,0);
 			Path2D path = new Path2D.Double();
-			path.moveTo(-0.5,0); // Base vertex 1
-			path.lineTo(0.5,0);  // Base vertex 2
-			path.lineTo(0,1);    // Tip vertex
+			path.moveTo(-0.5,0);
+			path.lineTo(0.5,0);
+			path.lineTo(0,1);
 			path.closePath();
 			g.fill(path);
 		}
 	};
 
-	// Custom SceneGraphNode for a wheel (polygon with spokes)
-	// Draws a wheel of diameter 1, centered at (0,0)
-	private static SceneGraphNode wheelNode = new SceneGraphNode() {
-	    void doDraw(Graphics2D g) {
-	        int sides = 12; // Number of sides for the polygon rim and number of spokes
-	        Color prevColor = g.getColor();
-	        if (this.color == null) { // If node color isn't set, use black for wheel
-	            g.setColor(Color.BLACK);
-	        }
-	        // else use this.color which would have been set by g.setColor(this.color)
+	private static SceneGraphNode filledPolygon = new SceneGraphNode() {
+		void doDraw(Graphics2D g) {
 
-	        Path2D path = new Path2D.Double();
-	        // Spokes
-	        for (int i = 0; i < sides; i++) {
-	            double angle = 2 * Math.PI * i / sides;
-	            path.moveTo(0,0); // center
-	            path.lineTo(0.5 * Math.cos(angle), 0.5 * Math.sin(angle)); // Radius 0.5
-	        }
-	        // Polygon Rim
-	        path.moveTo(0.5 * Math.cos(0), 0.5 * Math.sin(0)); // Start at first vertex
-	        for (int i = 1; i <= sides; i++) { // Loop through sides + 1 to include the closing segment
-	            double angle = 2 * Math.PI * i / sides;
-	            path.lineTo(0.5 * Math.cos(angle), 0.5 * Math.sin(angle));
-	        }
-	        g.draw(path);
+			int n = 10;
+			double t = 0, ang = (Math.PI * 2) / n;
 
-	        if (this.color == null) { // Restore previous color if we changed it
-	            g.setColor(prevColor);
-	        }
-	        // If this.color was set, the outer draw() method will restore it.
-	    }
+			int[] x1 = new int[n];
+			int[] y1 = new int[n];
+
+			for (int i = 0; i < n; i++) {
+				x1[i] = (int) (350 * Math.sin(t));
+				y1[i] = (int) (350 * Math.cos(t));
+				t += ang;
+			}
+
+			Polygon polygon = new Polygon(x1, y1, n);
+			g.setStroke(new BasicStroke(4));
+			g.scale(0.00475, 0.00475);
+
+			for (int i = 0; i < n; i++) {
+				g.drawLine(x1[i], y1[i], 0, 0);
+			}
+
+			g.draw(polygon);
+
+		}
 	};
-
 
 	//--------------------------------- Implementation ------------------------------------
 
@@ -359,7 +281,7 @@ public class SceneGraph extends JPanel {
 				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 				applyLimits(g2, X_LEFT, X_RIGHT, Y_TOP, Y_BOTTOM, false);
 				g2.setStroke( new BasicStroke(pixelSize) ); // set default line width to one pixel.
-				if (world != null) world.draw(g2); // Check if world is initialized
+				world.draw(g2);
 			}
 		};
 		display.setPreferredSize( new Dimension(WIDTH,HEIGHT));
@@ -390,7 +312,7 @@ public class SceneGraph extends JPanel {
 		setBorder( BorderFactory.createLineBorder(Color.DARK_GRAY,4) );
 		add(top,BorderLayout.NORTH);
 		add(display,BorderLayout.CENTER);
-		createWorld(); // createWorld is called here
+		createWorld();
 	}
 
 
@@ -414,7 +336,7 @@ public class SceneGraph extends JPanel {
 	 * vertical directions will be different.
 	 */
 	private void applyLimits(Graphics2D g2, double xleft, double xright,
-			double ytop, double ybottom, boolean preserveAspect) {
+							 double ytop, double ybottom, boolean preserveAspect) {
 		int width = display.getWidth();   // The width of the drawing area, in pixels.
 		int height = display.getHeight(); // The height of the drawing area, in pixels.
 		if (preserveAspect) {

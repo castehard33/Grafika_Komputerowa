@@ -1,11 +1,9 @@
-package gk.lab3;
 
-
-import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.geom.*;
-import java.util.ArrayList;
 
 /**
  * A panel that displays a two-dimensional animation that is drawn
@@ -40,54 +38,28 @@ public class SubroutineHierarchy extends JPanel {
 
 	private int frameNumber = 0;  // Current frame number, goes up by one in each frame.
 
+	// TODO:  Define any other necessary state variables.
+
 	/**
 	 *  Responsible for drawing the entire scene.  The display is filled with the background
 	 *  color before this method is called.
 	 */
 	private void drawWorld(Graphics2D g2) {
+		rotatingPolygon(g2, 100, -1.02, -0.05); // Graphics2D, promieñ, translate_x, translate_y
+		rotatingPolygon(g2, 100, 1.04, -0.9);
+		rotatingPolygon(g2, 80, -1.3, 1.41);
+		rotatingPolygon(g2, 80, -3.12, 2.22);
+		rotatingPolygon(g2, 60, 0.85, 2.04);
+		rotatingPolygon(g2, 60, 2.12, 1.44);
 
-		double wheelRotationAngle = frameNumber * 2.0; // degrees
+		R_Line(g2, 1, 1.05, 0, -0.46, Color.RED); // Graphics2D, skala_x, skala_y, translate_x, translate_y, color
+		R_Line(g2, 0.85, 0.95, -2.6, 1.87, Color.RED);
+		R_Line(g2, 0.6, 0.7, 2.47, 2.47, Color.RED);
 
-		// Seesaw 1 parameters
-		double s1_fulcrumX = -2.0, s1_fulcrumBaseY = 0.2;
-		double s1_fulcrumW = 0.5, s1_fulcrumH = 0.8;
-		double s1_beamL = 3.0, s1_beamW = 0.3;
-		double s1_wheelD = 1.0;
-		double s1_tilt = 15;
-		Color s1_fulcrumColor = new Color(128,0,128); // Purple
-
-		drawSeesaw(g2, s1_fulcrumColor, s1_fulcrumX, s1_fulcrumBaseY, s1_fulcrumW, s1_fulcrumH,
-				   Color.RED, s1_beamL, s1_beamW,
-				   Color.BLACK, s1_wheelD, // wheelColor is black, s1_wheelD is diameter
-				   s1_tilt, wheelRotationAngle);
-
-		// Seesaw 2 parameters
-		double s2_fulcrumX = 2.0, s2_fulcrumBaseY = 1.0;
-		double s2_fulcrumW = 0.4, s2_fulcrumH = 0.5;
-		double s2_beamL = 2.0, s2_beamW = 0.25;
-		double s2_wheelD = 0.7;
-		double s2_tilt = 20;
-		Color s2_fulcrumColor = Color.GREEN;
-
-		drawSeesaw(g2, s2_fulcrumColor, s2_fulcrumX, s2_fulcrumBaseY, s2_fulcrumW, s2_fulcrumH,
-				   Color.RED, s2_beamL, s2_beamW,
-				   Color.BLACK, s2_wheelD,
-				   s2_tilt, wheelRotationAngle);
-
-		// Seesaw 3 parameters
-		double s3_fulcrumX = 0.0, s3_fulcrumBaseY = -2.0;
-		double s3_fulcrumW = 0.6, s3_fulcrumH = 0.5;
-		double s3_beamL = 4.0, s3_beamW = 0.4;
-		double s3_wheelD = 1.2;
-		double s3_tilt = 10;
-		Color s3_fulcrumColor = Color.BLUE;
-
-		drawSeesaw(g2, s3_fulcrumColor, s3_fulcrumX, s3_fulcrumBaseY, s3_fulcrumW, s3_fulcrumH,
-				   Color.RED, s3_beamL, s3_beamW,
-				   Color.BLACK, s3_wheelD,
-				   s3_tilt, wheelRotationAngle);
-
-	} // end drawWorld()
+		Triangle(g2, 0.4, 0.5, 0, -2, Color.BLUE); // Graphics2D, skala_x, skala_y, translate_x, translate_y, color
+		Triangle(g2, 0.25, 0.35, -2.25, 0.75, new Color(200, 21, 132));
+		Triangle(g2, 0.15, 0.25, 1.5, 1, new Color(0, 128, 0));
+	}// end drawWorld()
 
 
 	/**
@@ -95,60 +67,80 @@ public class SubroutineHierarchy extends JPanel {
 	 */
 	private void updateFrame() {
 		frameNumber++;
+		// TODO: If other updates are needed for the next frame, do them here.
+	}
+
+	private void Line(Graphics2D g2, double translate_x, double translate_y) {
+		g2.setColor(Color.RED);
+		g2.translate(translate_x, translate_y);
+		g2.rotate(-Math.PI / 8);
+		g2.scale(2.29, 0.14);
+		filledRect(g2);
+	}
+
+	private void R_Line(Graphics2D g2, double skala_x, double skala_y, double translate_x, double translate_y,
+						Color color) {
+		AffineTransform saveTransform = g2.getTransform();
+		g2.scale(skala_x, skala_y);
+		Line(g2, translate_x, translate_y);
+		g2.setTransform(saveTransform);
+	}
+
+	private void Triangle(Graphics2D g2, double skala_x, double skala_y, double translate_x, double translate_y,
+						  Color color) {
+		AffineTransform saveTransform = g2.getTransform();
+		g2.setColor(color);
+		g2.translate(translate_x, translate_y);
+		g2.scale(skala_x, skala_y);
+		g2.fillPolygon(new int[] { 0, 1, -1 }, new int[] { 3, 0, 0 }, 3);
+		g2.setTransform(saveTransform);
+	}
+
+	private void rotatingPolygon(Graphics2D g2, double r, double translate_x, double translate_y) {
+
+		AffineTransform saveTransform = g2.getTransform();
+		Color saveColor = g2.getColor();
+		g2.setTransform(saveTransform);
+		g2.setStroke(new BasicStroke(2));
+
+		int n = 10;
+		double t = 0, ang = (Math.PI * 2) / n;
+
+		int[] x1 = new int[n];
+		int[] y1 = new int[n];
+
+		for (int i = 0; i < n; i++) {
+			x1[i] = (int) (r * Math.sin(t));
+			y1[i] = (int) (r * Math.cos(t));
+			t += ang;
+		}
+
+		Polygon polygon = new Polygon(x1, y1, n);
+		g2.translate(translate_x, translate_y);
+		g2.setColor(Color.black);
+		g2.rotate(-Math.toRadians(frameNumber * 2));
+		g2.scale(0.00475, 0.00475);
+
+		for (int i = 0; i < n; i++) {
+			g2.drawLine(x1[i], y1[i], 0, 0);
+		}
+		g2.draw(polygon);
+		g2.setColor(saveColor);
+		g2.setTransform(saveTransform);
 	}
 
 
-	// Method to draw a complete seesaw
-	private void drawSeesaw(Graphics2D g2,
-							Color fulcrumColor, double fulcrumBaseX, double fulcrumBaseY, double fulcrumWidth, double fulcrumHeight,
-							Color beamColor, double beamLength, double beamWidth,
-							Color wheelColor, double wheelDiameter,
-							double tiltAngle, double wheelRotationAngle) {
+	// TODO: Define methods for drawing objects in the scene.
 
-		AffineTransform worldTransform = g2.getTransform(); // Save state before this seesaw
-		Color originalColor = g2.getColor();
-
-		// 1. Draw Fulcrum
-		// Transform for fulcrum is relative to worldTransform
-		g2.translate(fulcrumBaseX, fulcrumBaseY);
-		g2.scale(fulcrumWidth, fulcrumHeight);
-		g2.setColor(fulcrumColor);
-		filledTriangle(g2); // Base at (0,0), tip at (0,1) in its own scaled coords
-		g2.setTransform(worldTransform); // Restore to worldTransform
-
-		// 2. Group: Beam and Wheels (they tilt together relative to fulcrum tip)
-		// Transform for this group is relative to worldTransform
-		g2.translate(fulcrumBaseX, fulcrumBaseY + fulcrumHeight); // Move to fulcrum tip
-		g2.rotate(Math.toRadians(tiltAngle)); // Rotate group around fulcrum tip
-		// Current transform is now the "group transform" (pivot point, tilted)
-
-		AffineTransform groupTransform = g2.getTransform(); // Save this group transform
-
-		// Draw Beam (centered at the pivot point, relative to groupTransform)
-		g2.scale(beamLength, beamWidth);
-		g2.setColor(beamColor);
-		filledRect(g2); // filledRect is drawn centered at (0,0)
-		g2.setTransform(groupTransform); // Restore to groupTransform (undoes beam's scale)
-
-		// Draw Left Wheel (relative to groupTransform)
-		g2.translate(-beamLength / 2, 0); // Move to left end of beam along the tilted beam's x-axis
-		g2.rotate(Math.toRadians(wheelRotationAngle));
-		g2.scale(wheelDiameter, wheelDiameter); // wheelPolygon draws diameter 1
-		g2.setColor(wheelColor);
-		wheelPolygon(g2, 12); // 12 sides for the wheel
-		g2.setTransform(groupTransform); // Restore to groupTransform (undoes left wheel's transforms)
-
-		// Draw Right Wheel (relative to groupTransform)
-		g2.translate(beamLength / 2, 0); // Move to right end of beam
-		g2.rotate(Math.toRadians(wheelRotationAngle));
-		g2.scale(wheelDiameter, wheelDiameter);
-		g2.setColor(wheelColor);
-		wheelPolygon(g2, 12); // 12 sides for the wheel
-		// g2.setTransform(groupTransform); // No need to restore here, as we restore worldTransform next
-
-		// Restore original transform and color from before this seesaw was drawn
-		g2.setTransform(worldTransform);
-		g2.setColor(originalColor);
+	private void rotatingRect(Graphics2D g2) { // (DELETE THIS EXAMPLE)
+		AffineTransform saveTransform = g2.getTransform();  // (It might be necessary to save/restore transform and color)
+		Color saveColor = g2.getColor();
+		g2.setColor( Color.RED );
+		g2.rotate( Math.toRadians( frameNumber*0.75 ));
+		g2.scale( 2, 2 );
+		filledRect(g2);
+		g2.setColor(saveColor);
+		g2.setTransform(saveTransform);
 	}
 
 
@@ -171,35 +163,18 @@ public class SubroutineHierarchy extends JPanel {
 	}
 
 	private static void filledCircle(Graphics2D g2) { // Fills a circle, diameter = 1, center = (0,0)
-		g2.draw(new Ellipse2D.Double(-0.5,-0.5,1,1)); // Note: original was g2.draw, should be g2.fill for filledCircle
+		g2.draw(new Ellipse2D.Double(-0.5,-0.5,1,1));
 	}
 
-	private static void filledTriangle(Graphics2D g2) { // width = 1, height = 1, center of base is at (0,0), tip at (0,1)
+	private static void filledTriangle(Graphics2D g2) { // width = 1, height = 1, center of base is at (0,0);
 		Path2D path = new Path2D.Double();
-		path.moveTo(-0.5,0); // Base vertex 1
-		path.lineTo(0.5,0);  // Base vertex 2
-		path.lineTo(0,1);    // Tip vertex
+		path.moveTo(-0.5,0);
+		path.lineTo(0.5,0);
+		path.lineTo(0,1);
 		path.closePath();
 		g2.fill(path);
 	}
 
-	// Draws a polygon wheel of diameter 1, centered at (0,0), with specified number of sides/spokes
-	private static void wheelPolygon(Graphics2D g2, int sides) {
-	    Path2D path = new Path2D.Double();
-	    // Spokes
-	    for (int i = 0; i < sides; i++) {
-	        double angle = 2 * Math.PI * i / sides;
-	        path.moveTo(0,0); // center
-	        path.lineTo(0.5 * Math.cos(angle), 0.5 * Math.sin(angle)); // to vertex (radius 0.5)
-	    }
-	    // Polygon Rim
-	    path.moveTo(0.5 * Math.cos(0), 0.5 * Math.sin(0)); // Start at first vertex
-	    for (int i = 1; i <= sides; i++) { // Loop through sides + 1 to include the closing segment
-	        double angle = 2 * Math.PI * i / sides;
-	        path.lineTo(0.5 * Math.cos(angle), 0.5 * Math.sin(angle));
-	    }
-	    g2.draw(path); // Draw the combined path of spokes and rim
-	}
 
 
 	//--------------------------------- Implementation ------------------------------------
@@ -274,7 +249,7 @@ public class SubroutineHierarchy extends JPanel {
 	 * vertical directions will be different.
 	 */
 	private void applyLimits(Graphics2D g2, double xleft, double xright,
-			double ytop, double ybottom, boolean preserveAspect) {
+							 double ytop, double ybottom, boolean preserveAspect) {
 		int width = display.getWidth();   // The width of the drawing area, in pixels.
 		int height = display.getHeight(); // The height of the drawing area, in pixels.
 		if (preserveAspect) {
