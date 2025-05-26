@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Trójwymiarowe Kształty (JavaScript/glsim.js) - Klawisze Numeryczne</title>
+
+<script src="glsim.js"></script>  
+
+<script>
+
+    let obrotX = 15;
+    let obrotY = -15;
+    let obrotZ = 0;
+
+    let aktualnyKsztalt = 1;
+
+
+    function rysujKorkociag(liczbaPetli, promienPodstawy, wysokoscNaPetle, segmentyNaPetle) {
+        let calkowitaWysokosc = liczbaPetli * wysokoscNaPetle;
+        let y_start = -calkowitaWysokosc / 2;
+
+        glColor3f(0.0, 0.8, 0.0); 
+
+        glBegin(GL_LINE_STRIP);
+
+        for (let i = 0; i <= liczbaPetli * segmentyNaPetle; i++) { 
+            let ulamek_petli = (i % segmentyNaPetle) / segmentyNaPetle;
+            let ktora_petla = Math.floor(i / segmentyNaPetle);
+
+            let kat = Math.PI * 2 * ulamek_petli;
+
+            let x_wsp = Math.cos(kat) * promienPodstawy;
+            let z_wsp = Math.sin(kat) * promienPodstawy;
+            
+            let aktualne_y = y_start + (ktora_petla + ulamek_petli) * wysokoscNaPetle;
+            
+            if (i === liczbaPetli * segmentyNaPetle) {
+                 aktualne_y = calkowitaWysokosc / 2;
+            }
+
+            glVertex3f(x_wsp, aktualne_y, z_wsp);
+        }
+        glEnd();
+    }
+
+
+    function rysujPiramide(liczbaScianBocznych, promienPodstawy) {
+        let offset_y_podstawy = -promienPodstawy * 0.7; 
+        let offset_y_wierzcholka = promienPodstawy * 0.7; 
+
+        glBegin(GL_TRIANGLES);
+        for (let i = 0; i < liczbaScianBocznych; i++) {
+            let kat1 = 2 * Math.PI * i / liczbaScianBocznych;
+            let kat2 = 2 * Math.PI * (i + 1) / liczbaScianBocznych;
+
+            let x_podstawa_1 = promienPodstawy * Math.cos(kat1);
+            let z_podstawa_1 = promienPodstawy * Math.sin(kat1);
+
+            let x_podstawa_2 = promienPodstawy * Math.cos(kat2);
+            let z_podstawa_2 = promienPodstawy * Math.sin(kat2);
+
+            if (i % 2 === 0) {
+                glColor3f(1.0, 0.0, 0.0); 
+            } else {
+                glColor3f(0.0, 1.0, 0.0); 
+            }
+
+            glVertex3f(0, offset_y_wierzcholka, 0);         
+            glVertex3f(x_podstawa_1, offset_y_podstawy, z_podstawa_1); 
+            glVertex3f(x_podstawa_2, offset_y_podstawy, z_podstawa_2); 
+        }
+        glEnd();
+
+        glColor3f(0.5, 0.5, 0.5); 
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(0, offset_y_podstawy, 0); 
+        for (let i = 0; i <= liczbaScianBocznych; i++) { 
+            let kat = 2 * Math.PI * i / liczbaScianBocznych;
+            glVertex3f(promienPodstawy * Math.cos(kat), offset_y_podstawy, promienPodstawy * Math.sin(kat));
+        }
+        glEnd();
+    }
+
+
+
+
+    function odswiezWyswietlanie() { 
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+        glLoadIdentity();            
+
+        glRotatef(obrotZ, 0, 0, 1);
+        glRotatef(obrotY, 0, 1, 0);
+        glRotatef(obrotX, 1, 0, 0);
+      
+        if (aktualnyKsztalt === 1) {
+            rysujKorkociag(6, 0.3, 0.25, 30); 
+        } else { 
+            rysujPiramide(10, 0.8); 
+        }
+    }
+    
+
+    function inicjalizacjaGrafiki() { 
+        glMatrixMode(GL_PROJECTION); 
+        glLoadIdentity();            
+        glOrtho(-1.2, 1.2, -1.2, 1.2, -2.5, 2.5); 
+        glMatrixMode(GL_MODELVIEW);  
+        glEnable(GL_DEPTH_TEST);     
+        glClearColor(0.9, 0.9, 0.9, 1); 
+    }
+    
+
+    function obslugaKlawiszy(event) { 
+        let kodKlawisza = event.keyCode;
+        let czyPrzerysowac = true;
+
+        switch (kodKlawisza) {
+            case 37: 
+                obrotY -= 10;
+                break;
+            case 39: 
+                obrotY += 10;
+                break;
+            case 40: 
+                obrotX += 10;
+                break;
+            case 38: 
+                obrotX -= 10;
+                break;
+            case 33: 
+                obrotZ += 10;
+                break;
+            case 34: 
+                obrotZ -= 10;
+                break;
+            case 36: 
+                obrotX = 15;    
+                obrotY = -15;
+                obrotZ = 0;
+                break;
+            case 49: 
+                aktualnyKsztalt = 1;
+                break;
+            case 50: 
+                aktualnyKsztalt = 2;
+                break;
+            default:
+                czyPrzerysowac = false; 
+        }
+
+        if ((kodKlawisza >=33 && kodKlawisza <= 40) || kodKlawisza === 32 || kodKlawisza === 49 || kodKlawisza === 50) {
+             if (event.target === document.body) { 
+                event.preventDefault();
+             }
+        }
+
+        if (czyPrzerysowac) {
+            odswiezWyswietlanie(); 
+        }
+    }
+
+
+    function startAplikacji() {
+        try {
+            glsimUse("obszarRoboczy"); 
+        }
+        catch (blad) {
+            document.getElementById("kontenerKanwy").innerHTML =
+                "Niestety, wystąpił błąd inicjalizacji grafiki:<br>" + blad;
+            return;
+        }
+        document.onkeydown = obslugaKlawiszy; 
+        inicjalizacjaGrafiki();                 
+        odswiezWyswietlanie();                  
+    }
+
+</script>
+</head>
+
+<body onload="startAplikacji()">
+
+<h2>Dynamiczne Figury Trójwymiarowe - Wybór Klawiszami</h2>
+
+<p>
+    Steruj obrotem obiektu używając klawiszy strzałek oraz Page Up/Page Down. Klawisz Home przywraca początkową orientację.
+    <br>
+    Naciśnij <b>1</b> aby wyświetlić Korkociąg (zielony), lub <b>2</b> aby wyświetlić Piramidę (czerwono-zielona).
+</p>
+
+<noscript>
+<p><b>Uwaga: Ta strona do poprawnego działania wymaga włączonej obsługi JavaScript!</b></p>
+</noscript>
+
+<div id="kontenerKanwy">
+<canvas id="obszarRoboczy" width="650" height="550"></canvas> 
+</div>
+
+</body>
+</html>
