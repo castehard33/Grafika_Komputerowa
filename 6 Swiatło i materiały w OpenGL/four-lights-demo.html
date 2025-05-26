@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Four Lights Demo - Pyramid on Base</title>
+<link rel="stylesheet" href="./demo.css">
+<script src="./script/demo-core.js"></script>
+<script src="./script/glsim.js"></script>
+<script src="./script/basic-object-models-IFS.js"></script>
+<script>
+
+var camera;
+var animate;
+var drawBase;
+var ambientLight;
+var viewpointLight, redLight, blueLight, greenLight, rustLight;
+var pyramidModel;
+var pyramidBaseRadius = 1.5; 
+var pyramidHeight = 2.5;     
+var pyramidSlices = 10;      
+var animating = false;
+var frameNumber = 0;
+var sceneRotationY = 0; 
+var isDragging = false;
+var lastMouseX = 0;
+
+function uvSphere(radius, slices, stacks) {
+    var i,j;
+    for (j = 0; j < stacks; j++) {
+        var latitude1 = (Math.PI/stacks) * j - Math.PI/2;
+        var latitude2 = (Math.PI/stacks) * (j+1) - Math.PI/2;
+        var sinLat1 = Math.sin(latitude1);
+        var cosLat1 = Math.cos(latitude1);
+        var sinLat2 = Math.sin(latitude2);
+        var cosLat2 = Math.cos(latitude2);
+        glBegin(GL_TRIANGLE_STRIP);
+        for (i = 0; i <= slices; i++) {
+            var longitude = (2*Math.PI/slices) * i;
+            var sinLong = Math.sin(longitude);
+            var cosLong = Math.cos(longitude);
+            var x1 = cosLong * cosLat1;
+            var y1 = sinLong * cosLat1;
+            var z1 = sinLat1;
+            var x2 = cosLong * cosLat2;
+            var y2 = sinLong * cosLat2;
+            var z2 = sinLat2;
+            glNormal3d(x2,y2,z2);
+	    glVertex3d(radius*x2,radius*y2,radius*z2);
+	    glNormal3d(x1,y1,z1);
+            glVertex3d(radius*x1,radius*y1,radius*z1);
+        }
+        glEnd();
+    }
+} 
+
+function lights() {
+    glColor3d(0.5,0.5,0.5); 
+    var zero = [ 0, 0, 0, 1 ];
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, zero); 
+    
+    if (viewpointLight.checked) glEnable(GL_LIGHT0); else glDisable(GL_LIGHT0);
+    
+    if (redLight.checked) {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, [0.5, 0, 0, 1]);  
+        glEnable(GL_LIGHT1);
+    } else {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);  
+        glDisable(GL_LIGHT1);
+    }
+    glPushMatrix(); glRotated(-frameNumber, 0, 1, 0); glTranslated(10, 7, 0);
+    glLightfv(GL_LIGHT1, GL_POSITION, zero); uvSphere(0.5, 16, 8); glPopMatrix();
+    
+    if (greenLight.checked) {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, [0, 0.5, 0, 1]); 
+        glEnable(GL_LIGHT2);
+    } else {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero); 
+        glDisable(GL_LIGHT2);
+    }
+    glPushMatrix(); glRotated((frameNumber+100)*0.8743, 0, 1, 0); glTranslated(9, 8, 0);
+    glLightfv(GL_LIGHT2, GL_POSITION, zero); uvSphere(0.5, 16, 8); glPopMatrix();
+    
+    if (blueLight.checked) {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, [0, 0, 0.5, 1]); 
+        glEnable(GL_LIGHT3);
+    } else {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);
+        glDisable(GL_LIGHT3);
+    }
+    glPushMatrix(); glRotated((frameNumber-100)*1.3057, 0, 1, 0); glTranslated(9.5, 7.5, 0);
+    glLightfv(GL_LIGHT3, GL_POSITION, zero); uvSphere(0.5, 16, 8); glPopMatrix();
+
+    if (rustLight.checked) {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, [0.8, 0.6, 0.1, 1]);
+        glEnable(GL_LIGHT4);
+    } else {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);
+        glDisable(GL_LIGHT4);
+    }
+    glPushMatrix(); glRotated((frameNumber+50)*0.7, 0, 1, 0); glTranslated(8, 6, 0);
+    glLightfv(GL_LIGHT4, GL_POSITION, zero); uvSphere(0.5, 16, 8); glPopMatrix();
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);
+} 
+
+function drawCylinder(useRainbowColors = false) {
+    var i; var rgba;
+    glBegin(GL_TRIANGLE_STRIP);
+    for (i = 0; i <= 64; i++) {
+        var angle = 2*Math.PI/64 * i; var x = Math.cos(angle); var y = Math.sin(angle);
+        if (useRainbowColors) { rgba = colorArrayForHue(i/64.0, 1, 0.6); glColor3dv(rgba); }
+        glNormal3d( x, y, 0 ); glVertex3d( x, y, 1 ); glVertex3d( x, y, -1 );
+    } glEnd();
+    glNormal3d( 0, 0, 1 ); glBegin(GL_TRIANGLE_FAN);
+    if (useRainbowColors) glColor3d(1,1,1); glVertex3d( 0, 0, 1);
+    for (i = 0; i <= 64; i++) {
+        var angle = 2*Math.PI/64 * i; var x = Math.cos(angle); var y = Math.sin(angle);
+        if (useRainbowColors) { rgba = colorArrayForHue(i/64.0, 1, 0.6); glColor3dv(rgba); }
+        glVertex3d( x, y, 1 );
+    } glEnd();
+    glNormal3f( 0, 0, -1 ); glBegin(GL_TRIANGLE_FAN);
+    if (useRainbowColors) glColor3d(1,1,1); glVertex3d( 0, 0, -1);
+    for (i = 64; i >= 0; i--) {
+        var angle = 2*Math.PI/64 * i; var x = Math.cos(angle); var y = Math.sin(angle);
+        if (useRainbowColors) { rgba = colorArrayForHue(i/64.0, 1, 0.6); glColor3dv(rgba); }
+        glVertex3d( x, y, -1 );
+    } glEnd();    
+}
+
+function colorArrayForHue(h, s, v) {
+    var r,g,b; var c,x; h = h*359; c = v*s;
+    x = (h < 120)? h/60 : (h < 240)? (h-120)/60 : (h-240)/60;
+    x = c * (1-Math.abs(x-1)); x += (v-c);
+    switch (Math.floor(h/60)) {
+        case 0: r=v; g=x; b=v-c; break; case 1: r=x; g=v; b=v-c; break;
+        case 2: r=v-c; g=v; b=x; break; case 3: r=v-c; g=x; b=v; break;
+        case 4: r=x; g=v-c; b=v; break; case 5: r=v; g=v-c; b=x; break;
+    }
+    return [r,g,b,1];
+}
+
+function display() {
+    glClearColor(0.1, 0.1, 0.1, 1);
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ); 
+
+    camera.apply(); 
+
+    glPushMatrix(); 
+    glRotatef(sceneRotationY, 0, 1, 0); 
+
+        lights(); 
+
+        if (ambientLight.checked) {
+            glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.15, 0.15, 0.15, 1] );
+        } else {
+            glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0, 0, 0, 1] );
+        }
+
+        var basePlatformRadius = 3.0; 
+        var basePlatformHeight = 0.3; 
+
+        if (drawBase.checked) {
+            glPushAttrib(GL_ENABLE_BIT | GL_LIGHTING_BIT | GL_CURRENT_BIT);
+            glDisable(GL_COLOR_MATERIAL); 
+            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,  [0.15, 0.07, 0.02, 1.0]); 
+            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,  [0.3, 0.15, 0.05, 1.0]); 
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.05, 0.02, 0.01, 1.0]);
+            glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 2);
+
+            glPushMatrix();
+                var cylinderCenterY = -(pyramidHeight / 2) - (basePlatformHeight / 2) - 0.05; 
+                glTranslated(0, cylinderCenterY , 0); 
+                glRotated(-90, 1, 0, 0);
+                glScaled(basePlatformRadius, basePlatformRadius, basePlatformHeight / 2.0);
+                drawCylinder(false); 
+            glPopMatrix();
+            glPopAttrib(); 
+        }
+
+        if (pyramidModel) { 
+            glPushAttrib(GL_ENABLE_BIT | GL_LIGHTING_BIT | GL_CURRENT_BIT);
+            glDisable(GL_COLOR_MATERIAL); 
+
+            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,  [0.02, 0.02, 0.1, 1.0]); 
+            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,  [0.1, 0.1, 0.4, 1.0]);  
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.2, 0.2, 0.5, 1.0]); 
+            glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 15);
+
+            glPushMatrix();
+                var pyramidBaseY = -(pyramidHeight / 2) ;
+                glTranslatef(0, pyramidBaseY + 1.2, 0); 
+                glRotatef(-90, 1, 0, 0); 
+                glsimDrawModel(pyramidModel);
+            glPopMatrix();
+            glPopAttrib(); 
+        }
+    glPopMatrix(); 
+}
+
+function initGL() {
+    glClearColor(0.1, 0.1, 0.1, 1);  
+    glEnable(GL_DEPTH_TEST); 
+    glEnable(GL_LIGHTING);
+    glEnable(GL_COLOR_MATERIAL); 
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE); 
+    glEnable(GL_NORMALIZE); 
+    glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 1);
+    
+    var dim = [ 0.6, 0.6, 0.6, 1 ]; 
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, dim);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, dim);
+
+    var red =  [ 0.7, 0.1, 0.1, 1]; 
+    var reda = [ 0.1, 0.0, 0.0, 1];
+    glLightfv(GL_LIGHT1, GL_AMBIENT, reda);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, red);
+    glLightfv(GL_LIGHT1, GL_SPECULAR, red);
+
+    var gr = [ 0.1, 0.7, 0.1, 1 ]; 
+    var gra = [ 0.0, 0.1, 0.0, 1 ];
+    glLightfv(GL_LIGHT2, GL_AMBIENT, gra);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, gr);
+    glLightfv(GL_LIGHT2, GL_SPECULAR, gr);
+
+    var bl = [0.1, 0.1, 0.7, 1]; 
+    var bla = [0.0, 0.0, 0.1, 1];
+    glLightfv(GL_LIGHT3, GL_AMBIENT, bla);
+    glLightfv(GL_LIGHT3, GL_DIFFUSE, bl);
+    glLightfv(GL_LIGHT3, GL_SPECULAR, bl);
+
+    var yellow = [0.8, 0.6, 0.1, 1]; 
+    var yellowa = [0.1, 0.08, 0.0, 1];
+    glLightfv(GL_LIGHT4, GL_AMBIENT, yellowa);
+    glLightfv(GL_LIGHT4, GL_DIFFUSE, yellow);
+    glLightfv(GL_LIGHT4, GL_SPECULAR, yellow);
+}
+
+function doFrame() {
+    if (animating) {
+	frameNumber++;
+	display(); 
+	setTimeout(doFrame, 30); 
+    }
+}
+
+function handleMouseDown(event) {
+    isDragging = true;
+    lastMouseX = event.clientX;
+}
+function handleMouseUp(event) {
+    isDragging = false;
+}
+function handleMouseLeave(event) {
+    isDragging = false;
+}
+function handleMouseMove(event) {
+    if (!isDragging) return;
+    var deltaX = event.clientX - lastMouseX;
+    sceneRotationY += deltaX * 0.5;
+    lastMouseX = event.clientX;
+    if (!animating) {
+        display();
+    }
+}
+
+function init() {
+    try {
+        glsimUse("maincanvas");
+    }
+    catch (e) {
+        document.getElementById("canvas-holder").innerHTML="<p><b>Sorry, an error occurred:<br>" + e + "</b></p>";
+	return;
+    }
+
+    pyramidModel = uvCone(pyramidBaseRadius, pyramidHeight, pyramidSlices, false); 
+    if (!pyramidModel) { 
+        console.error("Failed to create pyramid model!");
+        document.getElementById("canvas-holder").innerHTML = "<p><b>Error: Pyramid model could not be created. Check console.</b></p>";
+        return;
+    }
+
+    animate = document.getElementById("animate");
+    drawBase = document.getElementById("drawBase");
+    ambientLight = document.getElementById("ambientLight");
+    viewpointLight = document.getElementById("viewpointLight");
+    redLight = document.getElementById("redLight");
+    blueLight = document.getElementById("blueLight");
+    greenLight = document.getElementById("greenLight");
+    rustLight = document.getElementById("rustLight");
+
+    animate.checked = true; 
+    drawBase.checked = true;
+    ambientLight.checked = true;
+    viewpointLight.checked = true;
+    redLight.checked = true;
+    greenLight.checked = true;
+    blueLight.checked = true;
+    rustLight.checked = true;
+
+    var updateDisplay = function() { if (!animating) display(); };
+
+    drawBase.onchange = updateDisplay;
+    ambientLight.onchange = updateDisplay;
+    viewpointLight.onchange = updateDisplay;
+    redLight.onchange = updateDisplay;
+    blueLight.onchange = updateDisplay;
+    greenLight.onchange = updateDisplay;
+    rustLight.onchange = updateDisplay;
+    
+    animate.onchange = function() {
+	if (animate.checked) {
+        if (!animating) { 
+	        animating = true;
+	        doFrame();
+        }
+	}
+	else {
+	    animating = false;
+	}
+    }
+    
+    initGL(); 
+    
+    camera = new Camera();
+    camera.lookAt(0, 2, 10, 0, 0, 0, 0, 1, 0); 
+    camera.setScale(5); 
+    
+    var canvas = document.getElementById("maincanvas");
+    canvas.addEventListener('mousedown', handleMouseDown, false);
+    document.addEventListener('mouseup', handleMouseUp, false); 
+    canvas.addEventListener('mousemove', handleMouseMove, false);
+    canvas.addEventListener('mouseleave', handleMouseLeave, false);
+
+    if (animating) { 
+        doFrame();
+    } else {
+        display(); 
+    }
+}
+
+</script>
+</head>
+<body onload="init()">
+
+<div id="content">
+<h3 id="headline">Pyramid on Base Demo</h3>
+<div id="canvas-holder">
+<canvas id="maincanvas" width="600" height="500"></canvas>
+</div>
+<div id="tools">
+<p>
+<label><input type="checkbox" id="animate">Animate Lights</label><br><br>
+<label><input type="checkbox" id="drawBase">Draw Base</label><br><br>
+<label><input type="checkbox" id="ambientLight">Global Ambient</label><br><br>
+<label><input type="checkbox" id="viewpointLight">Viewpoint Light</label><br>
+<label><input type="checkbox" id="redLight">Red Light</label><br>
+<label><input type="checkbox" id="greenLight">Green Light</label><br>
+<label><input type="checkbox" id="blueLight">Blue Light</label><br>
+<label><input type="checkbox" id="rustLight">Yellow Light</label><br>
+</p>
+</div>
+</div>
+<div id="help-content" style="display:none">
+<h3>About this demo...</h3>
+<p>This demo shows a pyramid with a 10-sided base, resting on a cylindrical platform. The scene is illuminated by up to four light sources, plus global ambient light. You can control lights, animation, and rotate the scene with the mouse.</p>
+</div>
+<div id="help-icon">
+<img src="./image/question32.png" onclick="showDemoHelp()"
+    title="Click here for information about this demo." width="32" height="32">
+</div>
+<div id="hide-help-icon">
+<img src="./image/close32.png" onclick="showDemoHelp()"
+    title="Click here to return to the demo." width="65" height="32">
+</div>
+<div id="helpBG" style="display:none"></div>
+</body>
+</html>
