@@ -31,10 +31,10 @@ var sphere, cubeModel, cylinder, cone, torus, teapot;  // model data for six obj
 
 var sliderScale, sliderTranslateX, sliderTranslateY, sliderRotate;
 
-var scale = 1;
-var translateX = 0;
-var translateY = 0;
-var rotate = 0;
+var scaleVal = 1; 
+var translateXVal = 0; 
+var translateYVal = 0; 
+var rotateAngle = 0; 
 
 var loadingImages = true;
 var textureImages = new Array();  // Will hold Image objects loaded from image URLs.
@@ -44,17 +44,20 @@ var textureImageURLs = [
     "textures/NightEarth-512x256.jpg",
     "textures/marble.jpg",
     "textures/metal003.gif",
-    "textures/mandelbrot.jpeg"
+    "textures/mandelbrot.jpeg",
+    "textures/brick.jpg",     
+    "textures/clouds.jpg",   
+    "textures/earth.jpg"     
 ];
 
 function draw() {
 
-    scale = sliderScale.value(0);
-    rotate = sliderRotate.value(0);
-    translateX = sliderTranslateX.value(0);
-    translateY = sliderTranslateY.value(0);
+    scaleVal = sliderScale.value(0);
+    rotateAngle = sliderRotate.value(0);
+    translateXVal = sliderTranslateX.value(0);
+    translateYVal = sliderTranslateY.value(0);
 
-    drawTextureCanvas(); // Draws the canvas that displays the texture.
+    drawTextureCanvas(); 
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -67,13 +70,13 @@ function draw() {
     var image = textureImages[texnum];
     glEnable(GL_TEXTURE_2D);
     glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,image.width,image.height,0,GL_RGBA,GL_UNSIGNED_BYTE,image);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  // MUST set this since we don't have mipmaps
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
     
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
-    glTranslatef(translateX,translateY, 0);
-    glRotatef(rotate,0,0,1);
-    glScalef(scale,scale,1);
+    glTranslatef(translateXVal,translateYVal, 0);
+    glRotatef(rotateAngle,0,0,1);
+    glScalef(scaleVal,scaleVal,1);
     glMatrixMode(GL_MODELVIEW);
     
     camera.apply();
@@ -106,6 +109,10 @@ function draw() {
         glScalef(0.06, 0.06, 0.06);
         drawModel(teapot);
         break;
+    case 6: 
+        glScalef(0.61, 0.61, 0.61); 
+        drawPyramid(); 
+        break;
     }
 }
 
@@ -120,19 +127,20 @@ function drawTextureCanvas() {
     }
     graphics.clearRect(0,0,300,300);
     graphics.save();
-    graphics.translate(100,200);
+    graphics.translate(100,200); 
     graphics.scale(1,-1);
-    graphics.translate(translateX*100,translateY*100);
-    graphics.rotate(rotate/180 * Math.PI);
-    graphics.scale(scale,scale);
-    graphics.lineWidth = 5/scale;
+    graphics.translate(translateXVal*100,translateYVal*100);
+    graphics.rotate(rotateAngle/180 * Math.PI);
+    graphics.scale(scaleVal,scaleVal);
+    graphics.lineWidth = 5/(scaleVal*100); 
     graphics.strokeStyle = "white";
-    graphics.strokeRect(-.5,-.5,100,100);
-    graphics.lineWidth = 1/scale;
+    graphics.strokeRect(-0.5,-0.5,1,1); 
+    graphics.lineWidth = 1/(scaleVal*100); 
     graphics.strokeStyle = "black";
-    graphics.strokeRect(-.5,-.5,100,100);
+    graphics.strokeRect(-0.5,-0.5,1,1); 
     graphics.restore();
 }
+
 
 /**
  *  Draws a model using glDrawElements.  The model data must be in the format produced by
@@ -151,12 +159,56 @@ function drawModel(model) {
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);    
 }
 
+function drawPyramid() { 
+    var pyramidApexCoords = [0, 1.3, 0]; 
+    var basePolygonPoints = [];
+    var numberOfBaseSides = 10; 
+    var radiusOfBase = 1.2; 
+
+    for (var i = 0; i < numberOfBaseSides; i++) {
+        var angleForVertex = (2 * Math.PI * i) / numberOfBaseSides;
+        basePolygonPoints.push([
+            radiusOfBase * Math.cos(angleForVertex),
+             -1.01, 
+            radiusOfBase * Math.sin(angleForVertex)
+        ]);
+    }
+
+    glBegin(GL_TRIANGLES);
+    for (var i = 0; i < numberOfBaseSides; i++) {
+        var p1 = basePolygonPoints[i];
+        var p2 = basePolygonPoints[(i + 1) % numberOfBaseSides];
+
+        var normX = (p1[0] + p2[0]) * 0.52; 
+        var normY = 1.05; 
+        var normZ = (p1[2] + p2[2]) * 0.52;
+        glNormal3d(normX, normY, normZ);
+
+        glTexCoord2f(0.5, 1.0); glVertex3dv(pyramidApexCoords);
+        glTexCoord2f(0.0, 0.0); glVertex3dv(p1);
+        glTexCoord2f(1.0, 0.0); glVertex3dv(p2);
+    }
+    glEnd();
+
+    glBegin(GL_POLYGON);
+    glNormal3d(0, -1, 0);
+    for (var i = 0; i < numberOfBaseSides; i++) {
+        var baseVtx = basePolygonPoints[i];
+        var texU = (baseVtx[0] / radiusOfBase + 1.0) / 2.0;
+        var texV = (baseVtx[2] / radiusOfBase + 1.0) / 2.0;
+        glTexCoord2f(texU, texV);
+        glVertex3dv(baseVtx);
+    }
+    glEnd();
+}
+
+
 function initGL() {
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
     glEnable(GL_NORMALIZE);
     glEnable(GL_DEPTH_TEST);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, [ 1, 1, 1, 1 ]); // white, for texturing
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, [ 1, 1, 1, 1 ]); 
     glClearColor(0,0,0,1);
 }
 
@@ -175,13 +227,15 @@ function loadImages() {
             var texnum = Number(document.getElementById("texture").value);
             var image = textureImages[texnum];
             try {
-                glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,image.width,image.height,0,GL_RGBA,GL_UNSIGNED_BYTE,image);
+                if (image && image.complete && image.naturalHeight !== 0) { 
+                    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,image.width,image.height,0,GL_RGBA,GL_UNSIGNED_BYTE,image);
+                } else {
+                }
             } catch(e) {
-                // Some browsers (Chrome at least) get a Security error if they try to use an image from the local disk.
 				document.getElementById("headline").innerHTML="Can't access texture.<br>Note: Some browsers can't use a file from a local disk."
                 return;
             }
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  // MUST set this since we don't have mipmaps
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  
             draw();
             document.getElementById("object").disabled = false;
             document.getElementById("texture").disabled = false;
@@ -193,7 +247,10 @@ function changeTexture() {
     var texnum = Number(document.getElementById("texture").value);
     document.getElementById("texcanvas").style.backgroundImage = "url('" + textureImageURLs[texnum] + "')";
     var image = textureImages[texnum];
-    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,image.width,image.height,0,GL_RGBA,GL_UNSIGNED_BYTE,image);
+    if (image && image.complete && image.naturalHeight !== 0) { 
+        glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,image.width,image.height,0,GL_RGBA,GL_UNSIGNED_BYTE,image);
+    } else {
+    }
     draw();
 }
 
@@ -246,7 +303,7 @@ function init() {
     cylinder = uvCylinder();
     cone = uvCone();
     torus = uvTorus();
-    teapot = teapotModel;  // (This one is just a variable, defined in teapot-model-IFS.js)
+    teapot = teapotModel;  
     sliderRotate.draw();
     sliderScale.draw();
     sliderTranslateX.draw();
@@ -277,6 +334,9 @@ function init() {
         <option value="3">Marble</option>
         <option value="4">Metal</option>
         <option value="5">Mandelbrot</option>
+        <option value="6">Generic Brick</option> 
+        <option value="7">Generic Clouds</option> 
+        <option value="8">Generic Earth</option> 
     </select>
     <b style="margin-left:40px">Object</b>:
     <select id="object">
@@ -286,6 +346,7 @@ function init() {
        <option value="3">Cone</option>
        <option value="4">Torus</option>
        <option value="5">Teapot</option>
+       <option value="6">Pyramid</option> 
     </select>
     <button id="reset" style="margin-left:40px">Reset</button>
 </td>
@@ -320,7 +381,7 @@ Use the pop-up menus to select the texture and the object that
 you want to view.  You can use your mouse to rotate the objects.</p>
 <p>The display on the upper left shows the <i>st</i>-plane, where
 the texture lives.  In the display, <i>s</i> and <i>t</i> range
-from &minus;1 to 2.  A box is drawn around the original texture
+from −1 to 2.  A box is drawn around the original texture
 image, with <i>s</i> and <i>t</i> ranging from 0 to 1.  The
 point (0,0) is at the lower left corner of that box.  Note that
 (0,0) is not at the center of the display.</p>

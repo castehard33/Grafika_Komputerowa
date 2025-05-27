@@ -43,7 +43,7 @@ function draw() {
     
     draw2DScene();
     
-    if (objectNumber == 6) {
+    if (objectNumber == 7) { 
         return;   // Just show the 2D scene as the image in the canvas.
     }
     
@@ -97,6 +97,10 @@ function draw() {
 	glScalef(0.06, 0.06, 0.06);
 	drawModel(teapot);
 	break;
+    case 6: 
+    glScalef(0.58, 0.58, 0.58);
+    drawCustomPyramid();
+    break;
     }
 
 }
@@ -116,6 +120,50 @@ function drawModel(model) {
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_NORMAL_ARRAY);
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);    
+}
+
+
+
+function drawCustomPyramid() {
+    var pyramidApex = [0, 1.1, 0]; 
+    var basePoints = [];
+    var baseSideCount = 10; 
+    var baseRadius = 1.2; 
+
+
+    for (var i = 0; i < baseSideCount; i++) {
+        var angle = (2 * Math.PI * i) / baseSideCount;
+        basePoints.push([baseRadius * Math.cos(angle), -1.0, baseRadius * Math.sin(angle)]);
+    }
+
+
+    glBegin(GL_TRIANGLES);
+    for (var i = 0; i < baseSideCount; i++) {
+        var pt1 = basePoints[i];
+        var pt2 = basePoints[(i + 1) % baseSideCount]; 
+
+        var nX = (pt1[0] + pt2[0]) * 0.5;
+        var nY = 2.9; 
+        var nZ = (pt1[2] + pt2[2]) * 0.5;
+        glNormal3d(nX, nY, nZ);
+
+        glTexCoord2f(0.5, 1.0); glVertex3dv(pyramidApex);
+        glTexCoord2f(0.0, 0.0); glVertex3dv(pt1);
+        glTexCoord2f(1.0, 0.0); glVertex3dv(pt2);
+    }
+    glEnd();
+
+
+    glBegin(GL_POLYGON);
+    glNormal3d(0, -1.0, 0); 
+    for (var i = 0; i < baseSideCount; i++) { 
+        var vert = basePoints[i];
+        var texCoordU = (vert[0] / baseRadius + 1.0) / 2.0;
+        var texCoordV = (vert[2] / baseRadius + 1.0) / 2.0;
+        glTexCoord2f(texCoordU, texCoordV);
+        glVertex3dv(vert);
+    }
+    glEnd();
 }
 
 
@@ -411,7 +459,8 @@ function init() {
    <option value="3">Cone</option>
    <option value="4">Torus</option>
    <option value="5">Teapot</option>
-   <option value="6">SHOW 2D SCENE</option>
+   <option value="6">Decagon Pyramid</option> 
+   <option value="7">SHOW 2D SCENE</option> 
 </select>
 <label><input type="checkbox" id="animate" style="margin-left:30px"><b>Animate</b></label></p>
 </div>
