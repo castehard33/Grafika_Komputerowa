@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CS 424 Lab 10</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        "use strict";
+
+        let canvas, renderer, scene, camera;
+        let controls;
+
+        function render() {
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        function createWorld() {
+            renderer.setClearColor("#ffffff");
+            scene = new THREE.Scene();
+
+            let colour = 0x505050; 
+
+            camera = new THREE.PerspectiveCamera(30, canvas.width / canvas.height, 0.1, 100);
+            camera.position.set(-3, 7, 35);
+
+            let light = new THREE.DirectionalLight(0xffffff, 1.0);
+            light.position.set(5, 10, 7.5);
+            scene.add(light);
+
+            let light2 = new THREE.DirectionalLight(0xffffff, 0.5);
+            light2.position.set(-5, 5, -5);
+            scene.add(light2);
+
+            let ambientLight = new THREE.AmbientLight(0xaaaaaa, 0.4);
+            scene.add(ambientLight);
+
+            let pieceMaterial = new THREE.MeshPhongMaterial({ color: colour });
+
+            let part1 = new THREE.Mesh(
+                new THREE.CylinderGeometry(4, 4, 1, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part1.position.y = -7;
+
+            let part2 = new THREE.Mesh(
+                new THREE.CylinderGeometry(2.5, 4, 2, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part2.position.y = -6.6;
+
+            let part3 = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.5, 3, 10, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part3.position.y = -1.5;
+
+            let part4 = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.5, 2, 11, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part4.position.y = 2;
+
+            let part5 = new THREE.Mesh(
+                new THREE.CylinderGeometry(2.5, 2.5, 0.5, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part5.position.y = 5;
+
+            let part6 = new THREE.Mesh(
+                new THREE.CylinderGeometry(2, 2, 0.5, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part6.position.y = 5.5;
+
+            let part7 = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.5, 2, 0.5, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part7.position.y = 6;
+
+            let part8 = new THREE.Mesh(
+                new THREE.CylinderGeometry(3, 0.1, 4, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part8.position.y = 7;
+
+            let part9 = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.5, 3, 1, 32, 1, false, 0, Math.PI * 2),
+                pieceMaterial
+            );
+            part9.position.y = 9.5;
+
+            let part10 = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 6, 1),
+                pieceMaterial
+            );
+            part10.position.y = 9.5;
+
+            let part11 = new THREE.Mesh(
+                new THREE.BoxGeometry(2, 1, 1),
+                pieceMaterial
+            );
+            part11.position.y = 11.5;
+
+
+            scene.add(part1);
+            scene.add(part2);
+            scene.add(part3);
+            scene.add(part4);
+            scene.add(part5);
+            scene.add(part6);
+            scene.add(part7);
+            scene.add(part8);
+            scene.add(part9);
+            scene.add(part10);
+            scene.add(part11);
+
+            scene.add(camera);
+        }
+
+        function installOrbitControls() {
+            if (camera && canvas) {
+                controls = new THREE.OrbitControls(camera, canvas);
+                controls.enablePan = false;
+                controls.enableZoom = true;
+                controls.addEventListener('change', render);
+            }
+        }
+
+        function init() {
+            try {
+                canvas = document.getElementById("glcanvas");
+                if (!canvas) {
+                    console.error("Canvas element #glcanvas not found!");
+                    document.getElementById("message").innerHTML = '<b>Error: Canvas element #glcanvas not found!</b>';
+                    return;
+                }
+
+                renderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    antialias: true,
+                    alpha: false
+                });
+                renderer.setSize(canvas.width, canvas.height);
+
+            }
+            catch (e) {
+                console.error("Error initializing WebGLRenderer:", e);
+                document.getElementById("message").innerHTML = '<b>Sorry, an error occurred during renderer setup:<br>' + e + '</b>';
+                return;
+            }
+
+            createWorld();
+
+            if (!scene || !camera) {
+                 console.error("Scene or Camera not initialized by createWorld!");
+                 document.getElementById("message").innerHTML = '<b>Error: Scene or Camera not initialized!</b>';
+                 return;
+            }
+
+            installOrbitControls();
+            render();
+        }
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</head>
+<body>
+    <p id="message"></p>
+    <div id="canvas-holder" style="float:left; border: thin solid black; background-color: white">
+        <canvas width="1200" height="600" id="glcanvas"></canvas>
+    </div>
+</body>
+</html>
