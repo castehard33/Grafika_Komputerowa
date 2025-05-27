@@ -97,7 +97,6 @@
                 positions[2 * i] += velocities[2 * i];
                 positions[2 * i + 1] += velocities[2 * i + 1];
 
-                // bounce
                 if (positions[2 * i] < POINT_SIZE / 2 || positions[2 * i] > canvas.width - POINT_SIZE / 2)
                     velocities[2 * i] *= -1;
                 if (positions[2 * i + 1] < POINT_SIZE / 2 || positions[2 * i + 1] > canvas.height - POINT_SIZE / 2)
@@ -125,7 +124,7 @@
                     gl.drawArrays(gl.LINE_STRIP, 0, POINT_COUNT);
                 }
             }
-            else if (currentMode === "polygon11") {
+            else if (currentMode === "polygon10") {
                 const allPoints = [];
                 const allColors = [];
 
@@ -138,8 +137,13 @@
                     const gCol = useVertexColors ? colors[3 * i + 1] : currentColor[1];
                     const bCol = useVertexColors ? colors[3 * i + 2] : currentColor[2];
 
-                    for (let j = 0; j <= 11; j++) {
-                        const angle = j * 2 * Math.PI / 11;
+                    allPoints.push(cx, cy);
+                    if (useVertexColors) {
+                        allColors.push(rCol, gCol, bCol);
+                    }
+
+                    for (let j = 0; j <= 10; j++) { 
+                        const angle = j * 2 * Math.PI / 10;
                         allPoints.push(cx + r * Math.cos(angle));
                         allPoints.push(cy + r * Math.sin(angle));
                         if (useVertexColors) {
@@ -154,12 +158,12 @@
 
                 if (useVertexColors) {
                     gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allColors), gl.STATIC_DRAW);
+                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allColors), gl.STREAM_DRAW); 
                     gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
                 }
 
                 for (let i = 0; i < POINT_COUNT; i++) {
-                    gl.drawArrays(gl.LINE_STRIP, i * 12, 12); // 11 sides + closing point
+                    gl.drawArrays(gl.TRIANGLE_FAN, i * 12, 12);
                 }
             }
         }
@@ -171,26 +175,30 @@
                 isRunning = !isRunning;
                 if (isRunning) requestAnimationFrame(frame);
             }
-            else if (key === 49) { // "1"
+            else if (key === 49) { 
                 useVertexColors = true;
-                if (useVertexColors) {
-                    for (let i = 0; i < POINT_COUNT; i++) {
-                        colors[3 * i] = Math.random();
-                        colors[3 * i + 1] = Math.random();
-                        colors[3 * i + 2] = Math.random();
-                    }
+                for (let i = 0; i < POINT_COUNT; i++) {
+                    colors[3 * i] = Math.random();
+                    colors[3 * i + 1] = Math.random();
+                    colors[3 * i + 2] = Math.random();
                 }
                 if (!isRunning) render();
             }
-            else if (key === 50) { // "2"
-                currentMode = "polygon11";
+            else if (key === 50) { 
+                currentMode = "polygon10";
+                useVertexColors = true; 
+                for (let i = 0; i < POINT_COUNT; i++) {
+                    colors[3 * i] = Math.random();
+                    colors[3 * i + 1] = Math.random();
+                    colors[3 * i + 2] = Math.random();
+                }
                 if (!isRunning) render();
             }
-            else if (key === 51) { // "3"
+            else if (key === 51) { 
                 currentMode = "lines";
                 if (!isRunning) render();
             }
-            else if (key === 52) { // "4"
+            else if (key === 52) { 
                 currentMode = "points";
                 if (!isRunning) render();
             }
