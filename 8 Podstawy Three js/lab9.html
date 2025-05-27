@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CS 424 Lab 9</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115/build/three.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+
+        "use strict";
+
+        var canvas, renderer, scene, camera; // Standard three.js requirements.
+
+        var controls;  // An OrbitControls object
+
+        var animating = false;  // Set to true when an animation is in progress.
+        var frameNumber = 0;  // Frame number is advanced by 1 for each frame while animating.
+
+        var floor;
+        var roof;
+        var roof2;
+
+        var poles = [];
+        var horseScenes = [];
+        var pivots = [];
+
+        const NUM_ITEMS = 10;
+        const carouselRadius = 11;
+        const poleYPosition = 3.9;
+        const horseYPosition = 1;
+
+        function render() {
+            renderer.render(scene, camera);
+        }
+
+        function createWorld() {
+
+            renderer.setClearColor("black");
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(30, canvas.width/canvas.height, 0.1, 100);
+            camera.position.y = 25;
+            camera.position.z = 40;
+            var light;
+            light = new THREE.DirectionalLight();
+            light.position.set(0,0,1);
+            camera.add(light);
+            scene.add(camera);
+
+            var greenMaterial = new THREE.MeshPhongMaterial({
+                color: 0x008000,
+                specular: 0x111111,
+                shininess: 10
+            });
+
+            floor =  new THREE.Mesh(
+                new THREE.CylinderGeometry(13.5,13.5,0.6, NUM_ITEMS, 1),
+                greenMaterial.clone()
+            );
+            floor.rotation.y = Math.PI / NUM_ITEMS;
+            scene.add(floor);
+
+            var geometry = new THREE.SphereGeometry( 3.7, 32, 32 );
+            var material = new THREE.MeshBasicMaterial( { map: new THREE.TextureLoader().load('resources/earth.jpg') });
+            var sphere = new THREE.Mesh(geometry, material);
+            sphere.position.y=3.8;
+            scene.add(sphere);
+
+            roof =  new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1,12,3,30,1),
+                greenMaterial.clone()
+            );
+            roof.position.y=9.1;
+            scene.add(roof);
+
+            roof2 =  new THREE.Mesh(
+                new THREE.CylinderGeometry(12,12,0.3,200,1),
+                greenMaterial.clone()
+            );
+            roof2.position.y=7.5;
+            scene.add(roof2);
+
+            var loader = new THREE.GLTFLoader();
+
+            for (let i = 0; i < NUM_ITEMS; i++) {
+                let pivot = new THREE.Group();
+                scene.add(pivot);
+                pivots.push(pivot);
+
+                let pole = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.3, 0.3, 7.5, 12, 1),
+                    greenMaterial.clone()
+                );
+                const angle = (i / NUM_ITEMS) * Math.PI * 2;
+                pole.position.x = carouselRadius * Math.cos(angle);
+                pole.position.y = poleYPosition;
+                pole.position.z = carouselRadius * Math.sin(angle);
+                pivot.add(pole);
+                poles.push(pole);
+
+                (function(currentIndex, currentPivot, currentAngle) {
+                    loader.load('https://threejs.org/examples/models/gltf/Horse.glb', function (gltf) {
+                        let horseModelScene = gltf.scene;
+                        horseModelScene.scale.multiplyScalar(0.03);
+
+                        horseModelScene.position.x = carouselRadius * Math.cos(currentAngle);
+                        horseModelScene.position.y = horseYPosition;
+                        horseModelScene.position.z = carouselRadius * Math.sin(currentAngle);
+
+                        horseModelScene.rotation.y = currentAngle + Math.PI;
+
+                        currentPivot.add(horseModelScene);
+                        horseScenes.push(horseModelScene);
+                    });
+                })(i, pivot, angle);
+            }
+        }
+
+        function updateForFrame() {
+            const rotationSpeed = 0.01;
+
+            floor.rotation.y += rotationSpeed;
+            roof.rotation.y += rotationSpeed;
+            roof2.rotation.y += rotationSpeed;
+
+            for (let i = 0; i < pivots.length; i++) {
+                if (pivots[i]) {
+                    pivots[i].rotation.y += rotationSpeed;
+                }
+            }
+        }
+
+        function installOrbitControls() {
+            controls = new THREE.OrbitControls(camera,canvas);
+            controls.noPan = true;
+            controls.staticMoving = true;
+            function move() {
+                controls.update();
+                if (! animating) {
+                    render();
+                }
+            }
+            function down() {
+                document.addEventListener("mousemove", move, false);
+            }
+            function up() {
+                document.removeEventListener("mousemove", move, false);
+            }
+            function touch(event) {
+                if (event.touches.length == 1) {
+                    move();
+                }
+            }
+            canvas.addEventListener("mousedown", down, false);
+            canvas.addEventListener("touchmove", touch, false);
+        }
+
+        function doAnimateCheckbox() {
+            var run = document.getElementById("animateCheckbox").checked;
+            if (run != animating) {
+                animating = run;
+                if (animating) {
+                    requestAnimationFrame(doFrame);
+                }
+            }
+        }
+
+        function doFrame() {
+            if (animating) {
+                frameNumber++;
+                updateForFrame();
+                render();
+                requestAnimationFrame(doFrame);
+            }
+        }
+
+        function init() {
+            try {
+                canvas = document.getElementById("glcanvas");
+                renderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    antialias: true,
+                    alpha: false
+                });
+            }
+            catch (e) {
+                document.getElementById("message").innerHTML="<b>Sorry, an error occurred:<br>" +
+                    e + "</b>";
+                return;
+            }
+            document.getElementById("animateCheckbox").checked = true;
+            animating = true;
+            document.getElementById("animateCheckbox").onchange = doAnimateCheckbox;
+            createWorld();
+            installOrbitControls();
+            if (animating) {
+                 requestAnimationFrame(doFrame);
+            } else {
+                render();
+            }
+        }
+
+    </script>
+</head>
+<body onload="init()">
+
+<h2>Three.js Modeling Demo: Merry-Go-Round</h2>
+
+<noscript>
+    <p style="color: #AA0000; font-weight: bold">Sorry, but this page requires JavaScript!</p>
+</noscript>
+
+<p style="color:#AA0000; font-weight: bold" id="message">
+</p>
+
+<p>
+    <label><input type="checkbox" id="animateCheckbox"><b>Animate</b></label>
+    <b style="margin-left:50px">Use the mouse to rotate the model. Scroll to zoom.</b>
+</p>
+
+<div id="canvas-holder" style="float:left; border: thin solid black; background-color: white">
+    <canvas width=1200 height=600 id="glcanvas"></canvas>
+</div>
+
+</body>
+</html>

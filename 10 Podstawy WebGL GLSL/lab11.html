@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<html>
+
+<head>
+    <title>WebGL Intro</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+
+    <script type="x-shader/x-vertex" id="vshader-source">
+    attribute vec2 a_coords;
+    attribute vec3 a_color;
+
+    uniform float u_width;
+    uniform float u_height;
+    uniform float u_pointSize;
+
+    varying vec3 v_color;
+
+    void main() {
+        float x = a_coords.x / u_width * 2.0 - 1.0;
+        float y = 1.0 - a_coords.y / u_height * 2.0;
+        gl_Position = vec4(x, y, 0.0, 1.0);
+        gl_PointSize = u_pointSize;
+        v_color = a_color;
+    }
+    </script>
+
+    <script type="x-shader/x-fragment" id="fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+       precision highp float;
+    #else
+       precision mediump float;
+    #endif
+
+    uniform vec4 u_color;
+    uniform bool u_useVertexColor;
+    varying vec3 v_color;
+
+    void main() {
+        if (u_useVertexColor) {
+            gl_FragColor = vec4(v_color, 1.0);
+        } else {
+            gl_FragColor = u_color;
+        }
+    }
+    </script>
+
+    <script>
+        "use strict";
+
+        var canvas, gl;
+        var u_width_loc, u_height_loc, u_pointSize_loc;
+        var a_coords_loc, a_coords_buffer;
+        var a_color_loc, a_color_buffer;
+        var u_color_loc, u_useVertexColor_loc;
+
+        const POINT_COUNT = 30;
+        const POINT_SIZE = 64;
+
+        var positions = new Float32Array(2 * POINT_COUNT);
+        var velocities = new Float32Array(2 * POINT_COUNT);
+        var colors = new Float32Array(3 * POINT_COUNT);
+
+        var isRunning = true;
+        var useVertexColors = false;
+        var currentColor = [1.0, 0.0, 0.0, 1.0];
+        var currentMode = "points";
+
+        function createData() {
+            for (let i = 0; i < POINT_COUNT; i++) {
+                positions[2 * i] = canvas.width / 2;
+                positions[2 * i + 1] = canvas.height / 2;
+
+                let speed = 2 + 4 * Math.random();
+                let angle = 2 * Math.PI * Math.random();
+                velocities[2 * i] = speed * Math.sin(angle);
+                velocities[2 * i + 1] = speed * Math.cos(angle);
+
+                colors[3 * i] = Math.random();
+                colors[3 * i + 1] = Math.random();
+                colors[3 * i + 2] = Math.random();
+            }
+        }
+
+        function updateData() {
+            for (let i = 0; i < POINT_COUNT; i++) {
+                positions[2 * i] += velocities[2 * i];
+                positions[2 * i + 1] += velocities[2 * i + 1];
+
+                // bounce
+                if (positions[2 * i] < POINT_SIZE / 2 || positions[2 * i] > canvas.width - POINT_SIZE / 2)
+                    velocities[2 * i] *= -1;
+                if (positions[2 * i + 1] < POINT_SIZE / 2 || positions[2 * i + 1] > canvas.height - POINT_SIZE / 2)
+                    velocities[2 * i + 1] *= -1;
+            }
+        }
+
+        function render() {
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.uniform4fv(u_color_loc, currentColor);
+            gl.uniform1i(u_useVertexColor_loc, useVertexColors);
+
+            if (currentMode === "points" || currentMode === "lines") {
+                gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
+                gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STREAM_DRAW);
+                gl.vertexAttribPointer(a_coords_loc, 2, gl.FLOAT, false, 0, 0);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
+                gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+                gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
+
+                if (currentMode === "points") {
+                    gl.drawArrays(gl.POINTS, 0, POINT_COUNT);
+                } else {
+                    gl.drawArrays(gl.LINE_STRIP, 0, POINT_COUNT);
+                }
+            }
+            else if (currentMode === "polygon11") {
+                const allPoints = [];
+                const allColors = [];
+
+                for (let i = 0; i < POINT_COUNT; i++) {
+                    const cx = positions[2 * i];
+                    const cy = positions[2 * i + 1];
+                    const r = POINT_SIZE / 2;
+
+                    const rCol = useVertexColors ? colors[3 * i] : currentColor[0];
+                    const gCol = useVertexColors ? colors[3 * i + 1] : currentColor[1];
+                    const bCol = useVertexColors ? colors[3 * i + 2] : currentColor[2];
+
+                    for (let j = 0; j <= 11; j++) {
+                        const angle = j * 2 * Math.PI / 11;
+                        allPoints.push(cx + r * Math.cos(angle));
+                        allPoints.push(cy + r * Math.sin(angle));
+                        if (useVertexColors) {
+                            allColors.push(rCol, gCol, bCol);
+                        }
+                    }
+                }
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allPoints), gl.STREAM_DRAW);
+                gl.vertexAttribPointer(a_coords_loc, 2, gl.FLOAT, false, 0, 0);
+
+                if (useVertexColors) {
+                    gl.bindBuffer(gl.ARRAY_BUFFER, a_color_buffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allColors), gl.STATIC_DRAW);
+                    gl.vertexAttribPointer(a_color_loc, 3, gl.FLOAT, false, 0, 0);
+                }
+
+                for (let i = 0; i < POINT_COUNT; i++) {
+                    gl.drawArrays(gl.LINE_STRIP, i * 12, 12); // 11 sides + closing point
+                }
+            }
+        }
+
+        function doKey(evt) {
+            const key = evt.keyCode;
+
+            if (key === 32) {
+                isRunning = !isRunning;
+                if (isRunning) requestAnimationFrame(frame);
+            }
+            else if (key === 49) { // "1"
+                useVertexColors = true;
+                if (useVertexColors) {
+                    for (let i = 0; i < POINT_COUNT; i++) {
+                        colors[3 * i] = Math.random();
+                        colors[3 * i + 1] = Math.random();
+                        colors[3 * i + 2] = Math.random();
+                    }
+                }
+                if (!isRunning) render();
+            }
+            else if (key === 50) { // "2"
+                currentMode = "polygon11";
+                if (!isRunning) render();
+            }
+            else if (key === 51) { // "3"
+                currentMode = "lines";
+                if (!isRunning) render();
+            }
+            else if (key === 52) { // "4"
+                currentMode = "points";
+                if (!isRunning) render();
+            }
+        }
+
+        function initGL() {
+            const prog = createProgram(gl, "vshader-source", "fshader-source", "a_coords");
+            gl.useProgram(prog);
+
+            u_width_loc = gl.getUniformLocation(prog, "u_width");
+            u_height_loc = gl.getUniformLocation(prog, "u_height");
+            u_pointSize_loc = gl.getUniformLocation(prog, "u_pointSize");
+            u_color_loc = gl.getUniformLocation(prog, "u_color");
+            u_useVertexColor_loc = gl.getUniformLocation(prog, "u_useVertexColor");
+
+            a_coords_loc = gl.getAttribLocation(prog, "a_coords");
+            a_color_loc = gl.getAttribLocation(prog, "a_color");
+
+            gl.uniform1f(u_width_loc, canvas.width);
+            gl.uniform1f(u_height_loc, canvas.height);
+            gl.uniform1f(u_pointSize_loc, POINT_SIZE);
+
+            gl.uniform4fv(u_color_loc, currentColor);
+            gl.uniform1i(u_useVertexColor_loc, false);
+
+            a_coords_buffer = gl.createBuffer();
+            a_color_buffer = gl.createBuffer();
+
+            gl.enableVertexAttribArray(a_coords_loc);
+            gl.enableVertexAttribArray(a_color_loc);
+
+            gl.clearColor(0, 0, 0, 1);
+        }
+
+        function createProgram(gl, vertexID, fragmentID, attribute0) {
+            function getSource(id) {
+                return document.getElementById(id).textContent;
+            }
+            const vsh = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vsh, getSource(vertexID));
+            gl.compileShader(vsh);
+            if (!gl.getShaderParameter(vsh, gl.COMPILE_STATUS))
+                throw "Vertex shader error: " + gl.getShaderInfoLog(vsh);
+
+            const fsh = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fsh, getSource(fragmentID));
+            gl.compileShader(fsh);
+            if (!gl.getShaderParameter(fsh, gl.COMPILE_STATUS))
+                throw "Fragment shader error: " + gl.getShaderInfoLog(fsh);
+
+            const prog = gl.createProgram();
+            gl.attachShader(prog, vsh);
+            gl.attachShader(prog, fsh);
+            if (attribute0) gl.bindAttribLocation(prog, 0, attribute0);
+            gl.linkProgram(prog);
+            if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+                throw "Program link error: " + gl.getProgramInfoLog(prog);
+
+            return prog;
+        }
+
+        function frame() {
+            if (isRunning) {
+                updateData();
+                render();
+                requestAnimationFrame(frame);
+            }
+        }
+
+        function doResize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.uniform1f(u_width_loc, canvas.width);
+            gl.uniform1f(u_height_loc, canvas.height);
+            if (!isRunning) render();
+        }
+
+        function init() {
+            try {
+                canvas = document.createElement("canvas");
+                document.body.appendChild(canvas);
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl = canvas.getContext("webgl");
+                if (!gl) throw "WebGL not supported";
+            } catch (e) {
+                document.body.innerHTML = "<p>Error: " + e + "</p>";
+                return;
+            }
+
+            createData();
+            initGL();
+            window.addEventListener("resize", doResize);
+            document.addEventListener("keydown", doKey);
+            requestAnimationFrame(frame);
+        }
+    </script>
+</head>
+
+<body onload="init()">
+    <noscript>This page requires JavaScript</noscript>
+</body>
+
+</html>
