@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<html>
+<head>
+<title>CS424, Refactored Lab</title>
+<style>
+    body {
+        background-color: #F0F0F0; 
+    }
+    label {
+        white-space: pre;
+        margin-left: 25px;
+    }
+</style>
+
+<script type="x-shader/x-vertex" id="vertexShaderSource">
+    attribute vec3 vertexPosition_modelspace; 
+    attribute vec3 vertexNormal_modelspace; 
+    uniform mat4 modelViewMatrix; 
+    uniform mat4 projectionMatrix; 
+    varying vec3 varyingNormal_cameraspace; 
+    varying vec3 varyingEyePosition_cameraspace; 
+    void main() {
+        vec4 position_cameraspace = modelViewMatrix * vec4(vertexPosition_modelspace, 1.0);
+        gl_Position = projectionMatrix * position_cameraspace;
+        varyingNormal_cameraspace = normalize(vertexNormal_modelspace); 
+        varyingEyePosition_cameraspace = position_cameraspace.xyz / position_cameraspace.w;
+    }
+</script>
+
+<script type="x-shader/x-fragment" id="fragmentShaderSource">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+       precision highp float;
+    #else
+       precision mediump float;
+    #endif
+
+    struct MaterialData {
+        vec3 diffuseRGB; 
+        vec3 specularRGB;
+        vec3 emissiveRGB;
+        float shininess;
+    };
+
+    struct LightData {
+        bool isActive;
+        vec4 worldPosition;
+        vec3 lightColor;
+    };
+
+    uniform MaterialData objectMaterial;
+    uniform LightData sceneLights[4];
+    uniform mat3 normalTransformMatrix; 
+    varying vec3 varyingNormal_cameraspace;
+    varying vec3 varyingEyePosition_cameraspace;
+
+    vec3 calculateLighting( LightData lightSource, MaterialData mat, 
+                                vec3 eyePos, vec3 N_norm, vec3 V_norm ) {
+        vec3 L_dir, R_dir; 
+        if ( lightSource.worldPosition.w == 0.0 ) {
+            L_dir = normalize( lightSource.worldPosition.xyz );
+        }
+        else {
+            L_dir = normalize( lightSource.worldPosition.xyz/lightSource.worldPosition.w - varyingEyePosition_cameraspace );
+        }
+        if (dot(L_dir,N_norm) <= 0.0) {
+            return vec3(0.0);
+        }
+        vec3 reflectedLight = dot(L_dir,N_norm) * lightSource.lightColor * mat.diffuseRGB;
+        R_dir = -reflect(L_dir,N_norm);
+        if (dot(R_dir,V_norm) > 0.0) {
+            float factor = pow(dot(R_dir,V_norm), mat.shininess);
+            reflectedLight += factor * mat.specularRGB * lightSource.lightColor;
+        }
+        return reflectedLight;
+    }
+
+    void main() {
+        vec3 transformedNormal = normalize( normalTransformMatrix * varyingNormal_cameraspace );
+        vec3 viewDirection_norm = normalize( -varyingEyePosition_cameraspace);
+        vec3 finalColor = objectMaterial.emissiveRGB;
+        for (int i = 0; i < 4; i++) {
+            if (sceneLights[i].isActive) { 
+                if (gl_FrontFacing) {
+                    finalColor += calculateLighting( sceneLights[i], objectMaterial, varyingEyePosition_cameraspace,
+                                                    transformedNormal, viewDirection_norm);
+                }
+                else {
+                    finalColor += calculateLighting( sceneLights[i], objectMaterial, varyingEyePosition_cameraspace,
+                                                    -transformedNormal, viewDirection_norm);
+                }
+            }
+        }
+        gl_FragColor = vec4(finalColor, 1.0); 
+    }
+</script>
+
+<script src="gl-matrix.js"></script>
+<script src="basic-object-models-IFS.js"></script>
+
+<script>
+
+"use strict";
+
+var webGL; 
+var drawingCanvas; 
+
+var attr_vertexPosition; 
+var attr_vertexNormal; 
+
+var unif_modelViewMatrix; 
+var unif_projectionMatrix;
+var unif_normalMatrix;
+
+var unif_materialData; 
+var unif_lightDataArray; 
+
+var mainProjectionMatrix = mat4.create(); 
+var mainModelViewMatrix = mat4.create(); 
+var mainNormalMatrix = mat3.create(); 
+
+var animationFrameCounter = 0; 
+
+var shape_cone, shape_cylinder, shape_cube; 
+
+var transformMatrixStack = []; 
+
+var activeColor = [1,1,1]; 
+
+var viewRotationX = 0, viewRotationY = 0; 
+
+
+function createWingComponent()
+{
+    pushTransform();
+    activeColor = [180/255, 0.95, 240/255]; 
+    mat4.rotateY(mainModelViewMatrix, mainModelViewMatrix, Math.PI / 2);
+    mat4.translate(mainModelViewMatrix, mainModelViewMatrix, [0, 0, 2.7]);
+    mat4.scale(mainModelViewMatrix, mainModelViewMatrix, [0.7, 0.7, 4.1]);
+    shape_cone.draw();
+    popTransform();
+
+    pushTransform();
+    activeColor = [180/255, 0.95, 240/255]; 
+    mat4.translate(mainModelViewMatrix, mainModelViewMatrix, [0.3, 0, 0]);
+    mat4.rotateY(mainModelViewMatrix, mainModelViewMatrix, Math.PI / 2);
+    mat4.rotateX(mainModelViewMatrix, mainModelViewMatrix, Math.PI );
+	mat4.scale(mainModelViewMatrix, mainModelViewMatrix,[0.7, 0.7, 0.7]);
+    shape_cone.draw();
+    popTransform();
+}
+let numberOfWings = 10; 
+var animationRotationSpeed = 10; 
+
+
+function renderScene() {
+    webGL.clearColor(0.1, 0.1, 0.1, 1); 
+    webGL.clear(webGL.COLOR_BUFFER_BIT | webGL.DEPTH_BUFFER_BIT);
+    
+    mat4.perspective(mainProjectionMatrix, Math.PI / 4, 1, 1, 50); // Zmieniony FOV
+    webGL.uniformMatrix4fv(unif_projectionMatrix, false, mainProjectionMatrix );
+
+    mat4.lookAt(mainModelViewMatrix, [0,0,25], [0,0,0], [0,1,0]);
+    
+    mat4.rotateX(mainModelViewMatrix,mainModelViewMatrix,viewRotationX);
+    mat4.rotateY(mainModelViewMatrix,mainModelViewMatrix,viewRotationY);
+
+    pushTransform();
+    activeColor = [0.95, 0.1, 0.1]; 
+    mat4.translate(mainModelViewMatrix, mainModelViewMatrix, [0, -5, 0]);
+    mat4.scale(mainModelViewMatrix,mainModelViewMatrix,[5, 1, 5]);
+    shape_cube.draw();
+    popTransform();
+    
+ 
+    pushTransform();
+    activeColor = [0.9, 0.5, 0.3]; 
+    mat4.translate(mainModelViewMatrix, mainModelViewMatrix, [0, 0, 0]);
+    mat4.rotateX(mainModelViewMatrix,mainModelViewMatrix, Math.PI * 0.5);
+    mat4.scale(mainModelViewMatrix,mainModelViewMatrix,[0.4, 0.4, 10]);
+    shape_cylinder.draw();
+    popTransform();
+
+    pushTransform();
+    mat4.translate(mainModelViewMatrix, mainModelViewMatrix, [-2.9, 2, 0.2]);
+    pushTransform();
+    mat4.translate(mainModelViewMatrix, mainModelViewMatrix, [2.9, 2, 0]);
+    mat4.rotate(mainModelViewMatrix, mainModelViewMatrix, animationRotationSpeed, [0, 0, 1]);
+    mat4.translate(mainModelViewMatrix, mainModelViewMatrix, [2.9, -2, 0]);
+    
+    for(let k = 0; k < numberOfWings; k++){
+        pushTransform();
+        mat4.translate(mainModelViewMatrix, mainModelViewMatrix, [-3, 1.95, 0]);
+        mat4.rotateZ(mainModelViewMatrix, mainModelViewMatrix, k * (360 / numberOfWings) * (Math.PI / 180));
+        mat4.rotateY(mainModelViewMatrix, mainModelViewMatrix, Math.PI);
+        createWingComponent();
+        popTransform();
+    }
+    popTransform(); 
+    popTransform(); 
+}
+
+
+function pushTransform() {
+    transformMatrixStack.push( mat4.clone(mainModelViewMatrix) );
+}
+
+
+function popTransform() {
+    mainModelViewMatrix = transformMatrixStack.pop();
+}
+
+
+function buildGeometricModel(geometricData) {
+    var newModel = {};
+    newModel.vertexBuffer = webGL.createBuffer();
+    newModel.normalBuffer = webGL.createBuffer();
+    newModel.indexBuffer = webGL.createBuffer();
+    newModel.vertexCount = geometricData.indices.length;
+
+    webGL.bindBuffer(webGL.ARRAY_BUFFER, newModel.vertexBuffer);
+    webGL.bufferData(webGL.ARRAY_BUFFER, geometricData.vertexPositions, webGL.STATIC_DRAW);
+    webGL.bindBuffer(webGL.ARRAY_BUFFER, newModel.normalBuffer);
+    webGL.bufferData(webGL.ARRAY_BUFFER, geometricData.vertexNormals, webGL.STATIC_DRAW);
+    webGL.bindBuffer(webGL.ELEMENT_ARRAY_BUFFER, newModel.indexBuffer);
+    webGL.bufferData(webGL.ELEMENT_ARRAY_BUFFER, geometricData.indices, webGL.STATIC_DRAW);
+
+    newModel.draw = function() { 
+        webGL.bindBuffer(webGL.ARRAY_BUFFER, this.vertexBuffer);
+        webGL.vertexAttribPointer(attr_vertexPosition, 3, webGL.FLOAT, false, 0, 0);
+        webGL.bindBuffer(webGL.ARRAY_BUFFER, this.normalBuffer);
+        webGL.vertexAttribPointer(attr_vertexNormal, 3, webGL.FLOAT, false, 0, 0);
+        
+        webGL.uniform3fv(unif_materialData.diffuseRGB, activeColor);
+        webGL.uniformMatrix4fv(unif_modelViewMatrix, false, mainModelViewMatrix );
+        mat3.normalFromMat4(mainNormalMatrix, mainModelViewMatrix);
+        webGL.uniformMatrix3fv(unif_normalMatrix, false, mainNormalMatrix);
+        
+        webGL.bindBuffer(webGL.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+        webGL.drawElements(webGL.TRIANGLES, this.vertexCount, webGL.UNSIGNED_SHORT, 0);
+    }
+    return newModel;
+}
+
+
+function initializeShaderProgram(glContext, vertShaderId, fragShaderId, primaryAttribName) {
+    function getScriptText(scriptId) {
+        var scriptElement = document.getElementById(scriptId);
+        var currentChild = scriptElement.firstChild;
+        var shaderCode = "";
+        while (currentChild) {
+            if (currentChild.nodeType == 3) 
+                shaderCode += currentChild.textContent;
+            currentChild = currentChild.nextSibling;
+        }
+        return shaderCode;
+    }
+    var vertexShaderSourceCode, fragmentShaderSourceCode;
+    try {
+        vertexShaderSourceCode = getScriptText(vertShaderId);
+        fragmentShaderSourceCode = getScriptText(fragShaderId);
+    }
+    catch (err) {
+        throw "Error: Failed to retrieve shader source: " + err;
+    }
+
+    var vertShader = glContext.createShader( glContext.VERTEX_SHADER );
+    glContext.shaderSource(vertShader, vertexShaderSourceCode);
+    glContext.compileShader(vertShader);
+    if ( !glContext.getShaderParameter(vertShader, glContext.COMPILE_STATUS) ) {
+        throw "Vertex shader compilation error:  " + glContext.getShaderInfoLog(vertShader);
+     }
+
+    var fragShader = glContext.createShader( glContext.FRAGMENT_SHADER );
+    glContext.shaderSource(fragShader, fragmentShaderSourceCode);
+    glContext.compileShader(fragShader);
+    if ( !glContext.getShaderParameter(fragShader, glContext.COMPILE_STATUS) ) {
+       throw "Fragment shader compilation error:  " + glContext.getShaderInfoLog(fragShader);
+    }
+
+    var shaderProg = glContext.createProgram();
+    glContext.attachShader(shaderProg, vertShader);
+    glContext.attachShader(shaderProg, fragShader);
+
+    if (primaryAttribName) {
+       glContext.bindAttribLocation(shaderProg, 0, primaryAttribName);
+    }
+
+    glContext.linkProgram(shaderProg);
+    if ( !glContext.getProgramParameter( shaderProg, glContext.LINK_STATUS) ) {
+       throw "Shader program link error:  " + glContext.getProgramInfoLog(shaderProg);
+    }
+    return shaderProg;
+}
+
+
+
+function setupWebGLContext() {
+    var program = initializeShaderProgram(webGL, "vertexShaderSource", "fragmentShaderSource", "vertexPosition_modelspace");
+    webGL.useProgram(program);
+    webGL.enable(webGL.DEPTH_TEST);
+    
+    attr_vertexPosition = webGL.getAttribLocation(program, "vertexPosition_modelspace");
+    attr_vertexNormal = webGL.getAttribLocation(program, "vertexNormal_modelspace");
+    webGL.enableVertexAttribArray(attr_vertexPosition);
+    webGL.enableVertexAttribArray(attr_vertexNormal);
+    
+    unif_modelViewMatrix = webGL.getUniformLocation(program, "modelViewMatrix");
+    unif_projectionMatrix = webGL.getUniformLocation(program, "projectionMatrix");
+    unif_normalMatrix =  webGL.getUniformLocation(program, "normalTransformMatrix");
+    
+    unif_materialData = {
+        diffuseRGB: webGL.getUniformLocation(program, "objectMaterial.diffuseRGB"),
+        specularRGB: webGL.getUniformLocation(program, "objectMaterial.specularRGB"),
+        emissiveRGB: webGL.getUniformLocation(program, "objectMaterial.emissiveRGB"),
+        shininess: webGL.getUniformLocation(program, "objectMaterial.shininess")
+    };
+
+    unif_lightDataArray = new Array(4);
+    for (var i = 0; i < 4; i++) {
+        unif_lightDataArray[i] = {
+            isActive: webGL.getUniformLocation(program, "sceneLights[" + i + "].isActive"),
+            worldPosition: webGL.getUniformLocation(program, "sceneLights[" + i + "].worldPosition"),
+            lightColor: webGL.getUniformLocation(program, "sceneLights[" + i + "].lightColor")
+        };
+    }
+     
+    webGL.uniform3f( unif_materialData.diffuseRGB, 1, 1, 1 );        
+    webGL.uniform3f( unif_materialData.specularRGB, 0.15, 0.15, 0.15 ); 
+    webGL.uniform3f( unif_materialData.emissiveRGB, 0.0, 0.0, 0.0 ); 
+    webGL.uniform1f( unif_materialData.shininess, 40 );
+    
+    for (var i = 1; i < 4; i++) { 
+        webGL.uniform1i( unif_lightDataArray[i].isActive, 0 ); 
+        webGL.uniform4f( unif_lightDataArray[i].worldPosition, 0, 0, 1, 0 );
+        webGL.uniform3f( unif_lightDataArray[i].lightColor, 1,1,1 ); 
+    }
+    
+    webGL.uniform1i( unif_lightDataArray[0].isActive, 1 ); 
+    webGL.uniform4f( unif_lightDataArray[0].worldPosition, 0,0,0,1 ); 
+    webGL.uniform3f( unif_lightDataArray[0].lightColor, 0.7, 0.7, 0.7 );
+    
+    webGL.uniform1i( unif_lightDataArray[1].isActive, 1 ); 
+    webGL.uniform4f( unif_lightDataArray[1].worldPosition, 0,1,0,0 ); 
+    webGL.uniform3f( unif_lightDataArray[1].lightColor, 0.3, 0.3, 0.3 ); 
+        
+} 
+
+
+function handleMouseDown(eventInfo) {
+   var lastMouseX, lastMouseY;
+   lastMouseX = eventInfo.clientX;
+   lastMouseY = eventInfo.clientY;
+   drawingCanvas.addEventListener("mousemove", handleMouseMove);
+   document.addEventListener("mouseup", handleMouseUp);
+
+   function handleMouseMove(eventInfo) {
+      var deltaX = eventInfo.clientX - lastMouseX;
+      var deltaY = eventInfo.clientY - lastMouseY;
+      viewRotationX += deltaY / 250; 
+      viewRotationY += deltaX / 250;
+      lastMouseX = eventInfo.clientX;
+      lastMouseY = eventInfo.clientY;
+      renderScene();
+   }
+
+   function handleMouseUp(eventInfo) {
+      drawingCanvas.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+   }
+}
+
+    
+var animationIsRunning = false;
+
+function animationStep() {
+    if (animationIsRunning) {
+        animationRotationSpeed = animationRotationSpeed + Math.PI * 0.012; 
+        animationFrameCounter++; 
+        renderScene();
+        requestAnimationFrame(animationStep);
+    }
+}
+
+function toggleAnimationState() {
+    var isChecked = document.getElementById("animationToggle").checked;
+    if (isChecked != animationIsRunning) {
+        animationIsRunning = isChecked;
+        if (animationIsRunning)
+            requestAnimationFrame(animationStep);
+    }
+}
+
+
+function initializeApplication() {
+    try {
+        drawingCanvas = document.getElementById("mainCanvas");
+        webGL = drawingCanvas.getContext("webgl");
+        if ( !webGL ) {
+            throw "WebGL not supported by browser.";
+        }
+    }
+    catch (e) {
+        document.getElementById("errorDisplay").innerHTML =
+            "<p>Failed to get WebGL context: " + e + "</p>";
+        return;
+    }
+
+    try {
+        setupWebGLContext(); 
+    }
+    catch (e) {
+        document.getElementById("errorDisplay").innerHTML =
+            "<p>Failed to initialize WebGL: " + e + "</p>";
+        return;
+    }
+
+    document.getElementById("animationToggle").checked = false;
+    document.getElementById("animationToggle").addEventListener("change", toggleAnimationState);
+    document.getElementById("resetViewButton").addEventListener("click", function() { viewRotationX = viewRotationY = 0; renderScene(); });
+    drawingCanvas.addEventListener("mousedown", handleMouseDown);
+    
+    shape_cone = buildGeometricModel(uvCone()); 
+    shape_cylinder = buildGeometricModel(uvCylinder()); 
+    shape_cube = buildGeometricModel(cube()); 
+    renderScene();
+}
+
+
+</script>
+</head>
+<body onload="initializeApplication()">
+
+<h2>WebGL Interactive 3D Scene</h2>
+
+<noscript><hr><h3>This page requires Javascript and a WebGL-enabled browser.</h3><hr></noscript>
+
+<p id="errorDisplay" style="font-weight:bold">Drag mouse on model to rotate.</p>
+
+<p>
+   <label><input type="checkbox" id="animationToggle">Enable Animation</label>
+   <button id="resetViewButton" style="margin-left:40px">Reset View</button>
+</p>
+
+
+<div>
+    <canvas width=800 height=800 id="mainCanvas" style="background-color:#336699;"></canvas> 
+</div>
+
+</body>
+</html>
